@@ -93,7 +93,7 @@ pub struct MountConfig {
 }
 
 fn default_shell() -> String {
-    "bash".into()
+    "fish".into()
 }
 
 fn deserialize_home<'de, D>(deserializer: D) -> std::result::Result<PathBuf, D::Error>
@@ -517,7 +517,7 @@ home = "~/containers/myenv"
         assert_eq!(cfg.image.base, "fedora:41");
         assert_eq!(cfg.image.name, "myenv");
         assert_eq!(cfg.container.name, "myenv");
-        assert_eq!(cfg.container.shell, "bash");
+        assert_eq!(cfg.container.shell, "fish");
         assert_eq!(cfg.integration.gpu, GpuMode::Auto);
         assert!(cfg.integration.wayland);
         assert!(cfg.integration.audio);

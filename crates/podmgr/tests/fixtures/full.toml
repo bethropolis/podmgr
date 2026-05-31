@@ -12,7 +12,7 @@ commands = ["dnf clean all"]
 [container]
 name  = "myenv"
 home  = "~/containers/myenv"
-shell = "bash"
+shell = "fish"
 
 [container.mounts]
 extra = ["~/Work:/home/user/Work:z"]

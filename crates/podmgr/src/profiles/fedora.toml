@@ -8,7 +8,7 @@ prebuilt_repo = "bethropolis/podmgr-images"
 [container]
 name = "fedora"
 home = "~/containers/fedora"
-shell = "/bin/bash"
+shell = "/usr/bin/fish"
 
 [integration]
 wayland = true

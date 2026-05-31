@@ -64,7 +64,7 @@ fn containerfile_prebuilt_generates_minimal() {
     // (the image already has it embedded)
     assert!(!cf.contains("COPY podmgr-guest"));
     assert!(cf.contains(r#"ENTRYPOINT ["/usr/local/bin/podmgr-guest", "--entry"]"#));
-    assert!(cf.contains(r#"CMD ["/bin/bash"]"#));
+    assert!(cf.contains(r#"CMD ["/usr/bin/fish"]"#));
     assert!(cf.contains("ENV PODMGR_CONTAINER=prebuilt"));
     // Prebuilt should NOT include packages or RUN commands
     assert!(!cf.contains("dnf install"));
@@ -106,7 +106,7 @@ fn label_apply_defaults_empty_does_not_override() {
     ]);
     labels::apply_defaults(&mut config, &labels);
     // Should keep existing defaults
-    assert_eq!(config.container.shell, "/bin/bash");
+    assert_eq!(config.container.shell, "/usr/bin/fish");
     assert_eq!(config.integration.gpu, podmgr::config::GpuMode::Auto);
 }
 
@@ -131,6 +131,7 @@ fn quadlet_prebuilt_uses_registry_image() {
     let config = load_config("prebuilt.toml");
     let env = HostEnv {
         uid: 1000,
+        username: "testuser".into(),
         xdg_runtime_dir: PathBuf::from("/run/user/1000"),
         wayland_display: None,
         wayland_socket: None,
@@ -162,6 +163,7 @@ fn quadlet_custom_uses_build_ref() {
     let config = load_config("full.toml");
     let env = HostEnv {
         uid: 1000,
+        username: "testuser".into(),
         xdg_runtime_dir: PathBuf::from("/run/user/1000"),
         wayland_display: None,
         wayland_socket: None,
@@ -193,6 +195,7 @@ fn quadlet_has_environment_home() {
     let config = load_config("full.toml");
     let env = podmgr::env::HostEnv {
         uid: 1000,
+        username: "testuser".into(),
         xdg_runtime_dir: PathBuf::from("/run/user/1000"),
         wayland_display: Some("wayland-0".into()),
         wayland_socket: Some(PathBuf::from("/run/user/1000/wayland-0")),
@@ -223,7 +226,7 @@ fn profile_cachy_parses() {
     let cfg = Config::parse(&profile.toml).unwrap();
     assert_eq!(cfg.image.base, "cachy-latest");
     assert!(cfg.image.prebuilt);
-    assert_eq!(cfg.container.shell, "/bin/bash");
+    assert_eq!(cfg.container.shell, "/usr/bin/fish");
 }
 
 #[test]

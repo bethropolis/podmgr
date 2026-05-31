@@ -84,7 +84,7 @@ pub fn run(cmd: &[String]) -> ! {
                 }
             } else if is_tty {
                 // Interactive with no explicit CMD: start a login shell
-                let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/bash".into());
+                let shell = std::env::var("SHELL").unwrap_or_else(|_| "/usr/bin/fish".into());
                 let program = CString::new(shell.as_bytes()).unwrap();
                 let arg0 = CString::new(format!("-{}", shell)).unwrap();
                 match execv(&program, &[&arg0]) {
@@ -138,7 +138,7 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
                 "-u", &uid.to_string(),
                 "-g", &gid.to_string(),
                 "-d", &format!("/home/{}", user),
-                "-s", "/bin/bash",
+                    "-s", "/usr/bin/fish",
                 "-m", user,
             ])
             .status();
@@ -150,7 +150,7 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
                     "-D",
                     "-G", user,
                     "-h", &format!("/home/{}", user),
-                    "-s", "/bin/bash",
+                    "-s", "/usr/bin/fish",
                     user,
                 ])
                 .status();

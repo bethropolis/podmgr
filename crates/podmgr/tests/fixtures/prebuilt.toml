@@ -8,4 +8,4 @@ prebuilt_repo = "bethropolis/podmgr-images"
 [container]
 name = "prebuilt"
 home = "~/containers/prebuilt"
-shell = "/bin/bash"
+shell = "/usr/bin/fish"

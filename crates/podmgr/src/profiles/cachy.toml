@@ -8,7 +8,7 @@ prebuilt_repo = "bethropolis/podmgr-images"
 [container]
 name = "cachy"
 home = "~/containers/cachy"
-shell = "/bin/bash"
+shell = "/usr/bin/fish"
 
 [integration]
 wayland = true

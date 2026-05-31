@@ -8,7 +8,7 @@ prebuilt_repo = "bethropolis/podmgr-images"
 [container]
 name = "gaming"
 home = "~/containers/gaming"
-shell = "/bin/bash"
+shell = "/usr/bin/fish"
 
 [integration]
 wayland = true

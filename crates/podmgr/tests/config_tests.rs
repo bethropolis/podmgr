@@ -17,7 +17,7 @@ fn parses_full_config() {
     assert_eq!(cfg.image.base, "fedora:41");
     assert_eq!(cfg.image.name, "myenv");
     assert_eq!(cfg.container.name, "myenv");
-    assert_eq!(cfg.container.shell, "bash");
+    assert_eq!(cfg.container.shell, "fish");
 }
 
 #[test]
@@ -39,7 +39,7 @@ fn parses_minimal_config() {
 
     assert_eq!(cfg.image.base, "fedora:41");
     assert_eq!(cfg.container.name, "minimal");
-    assert_eq!(cfg.container.shell, "bash");
+    assert_eq!(cfg.container.shell, "fish");
     assert_eq!(cfg.integration.gpu, podmgr::config::GpuMode::Auto);
     assert!(cfg.integration.wayland);
     assert!(cfg.integration.audio);

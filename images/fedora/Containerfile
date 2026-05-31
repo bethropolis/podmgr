@@ -1,5 +1,8 @@
 FROM fedora:44
 
+RUN dnf install -y fish && \
+    dnf clean all
+
 COPY podmgr-guest /usr/local/bin/podmgr-guest
 
 LABEL podmgr.guest_version="0.2.0"
@@ -8,8 +11,8 @@ LABEL podmgr.integration.wayland="true"
 LABEL podmgr.integration.audio="true"
 LABEL podmgr.integration.gpu="enabled"
 LABEL podmgr.integration.dbus="true"
-LABEL podmgr.shell="/bin/bash"
-LABEL podmgr.default_shell="/bin/bash"
+LABEL podmgr.shell="/usr/bin/fish"
+LABEL podmgr.default_shell="/usr/bin/fish"
 
 ENTRYPOINT ["/usr/local/bin/podmgr-guest", "--entry"]
-CMD ["/bin/bash"]
+CMD ["/usr/bin/fish"]
