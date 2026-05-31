@@ -48,12 +48,9 @@ fn resolve_shorthand_uses_custom_registry() {
 
 #[test]
 fn resolve_full_from_config() {
-    let mut config = load_config("prebuilt.toml");
-    config.image.prebuilt = true;
-    config.image.prebuilt_registry = "ghcr.io".into();
-    config.image.prebuilt_repo = "podmgr-images".into();
+    let config = load_config("prebuilt.toml");
     let ref_str = config::resolve_image_ref(&config.image.base, &config.image.prebuilt_registry, &config.image.prebuilt_repo);
-    assert_eq!(ref_str, "ghcr.io/podmgr-images:cachy");
+    assert_eq!(ref_str, "ghcr.io/bethropolis/podmgr-images:cachy-latest");
 }
 
 // ---- Containerfile prebuilt generation ----
@@ -62,7 +59,7 @@ fn resolve_full_from_config() {
 fn containerfile_prebuilt_generates_minimal() {
     let config = load_config("prebuilt.toml");
     let cf = podmgr::codegen::containerfile::generate(&config, "podmgr-guest");
-    assert!(cf.starts_with("FROM cachy\n"));
+    assert!(cf.starts_with("FROM cachy-latest\n"));
     // Prebuilt Containerfile does NOT COPY the guest binary
     // (the image already has it embedded)
     assert!(!cf.contains("COPY podmgr-guest"));
@@ -126,6 +123,72 @@ fn label_apply_defaults_schema_mismatch_returns_early() {
     assert!(config.image.prebuilt);
 }
 
+// ---- Quadlet prebuilt Image ref ----
+
+#[test]
+fn quadlet_prebuilt_uses_registry_image() {
+    use podmgr::codegen::quadlet;
+    use podmgr::env::HostEnv;
+    use podmgr::xdg::ResolvedXdgDirs;
+    let config = load_config("prebuilt.toml");
+    let env = HostEnv {
+        uid: 1000,
+        username: "bet".into(),
+        xdg_runtime_dir: PathBuf::from("/run/user/1000"),
+        wayland_display: None,
+        wayland_socket: None,
+        pipewire_socket: None,
+        pulse_dir: None,
+        dbus_socket: None,
+        gpu_has_dri: false,
+        gpu_has_nvidia: false,
+        gpu_has_nvidia_uvm: false,
+    };
+    let xdg = ResolvedXdgDirs {
+        documents: None,
+        downloads: None,
+        pictures: None,
+        music: None,
+        videos: None,
+        desktop: None,
+    };
+    let q = quadlet::generate_container(&config, &env, &xdg);
+    assert!(q.contains("Image=ghcr.io/bethropolis/podmgr-images:cachy-latest"));
+    assert!(!q.contains("Image=podmgr-prebuilt.build"));
+}
+
+#[test]
+fn quadlet_custom_uses_build_ref() {
+    use podmgr::codegen::quadlet;
+    use podmgr::env::HostEnv;
+    use podmgr::xdg::ResolvedXdgDirs;
+    let config = load_config("full.toml");
+    let env = HostEnv {
+        uid: 1000,
+        username: "bet".into(),
+        xdg_runtime_dir: PathBuf::from("/run/user/1000"),
+        wayland_display: None,
+        wayland_socket: None,
+        pipewire_socket: None,
+        pulse_dir: None,
+        dbus_socket: None,
+        gpu_has_dri: false,
+        gpu_has_nvidia: false,
+        gpu_has_nvidia_uvm: false,
+    };
+    let xdg = ResolvedXdgDirs {
+        documents: None,
+        downloads: None,
+        pictures: None,
+        music: None,
+        videos: None,
+        desktop: None,
+    };
+    let q = quadlet::generate_container(&config, &env, &xdg);
+    assert!(q.contains("Image=podmgr-myenv.build"));
+    assert!(!q.contains("Image=ghcr.io"));
+}
+
 // ---- Quadlet HOME fix ----
 
 #[test]
@@ -134,6 +197,7 @@ fn quadlet_has_environment_home() {
     let config = load_config("full.toml");
     let env = podmgr::env::HostEnv {
         uid: 1000,
+        username: "bet".into(),
         xdg_runtime_dir: PathBuf::from("/run/user/1000"),
         wayland_display: Some("wayland-0".into()),
         wayland_socket: Some(PathBuf::from("/run/user/1000/wayland-0")),
@@ -153,10 +217,7 @@ fn quadlet_has_environment_home() {
         desktop: None,
     };
     let q = quadlet::generate_container(&config, &env, &xdg);
-    assert!(q.contains("Environment=HOME=/root"));
-    // Must appear right after UserNS=keep-id
-    let after_userns: Vec<&str> = q.lines().skip_while(|l| !l.contains("UserNS=keep-id")).collect();
-    assert!(after_userns.iter().any(|l| l.contains("Environment=HOME=/root")));
+    assert!(q.contains("Environment=HOME=/home/%u"));
 }
 
 // ---- Profile loading ----
@@ -164,8 +225,8 @@ fn quadlet_has_environment_home() {
 #[test]
 fn profile_cachy_parses() {
     let profile = podmgr::profiles::find("cachy").expect("cachy profile exists");
-    let cfg = Config::from_str(profile.toml).unwrap();
-    assert_eq!(cfg.image.base, "cachy");
+    let cfg = Config::from_str(&profile.toml).unwrap();
+    assert_eq!(cfg.image.base, "cachy-latest");
     assert!(cfg.image.prebuilt);
     assert_eq!(cfg.container.shell, "/bin/bash");
 }
@@ -173,16 +234,16 @@ fn profile_cachy_parses() {
 #[test]
 fn profile_fedora_parses() {
     let profile = podmgr::profiles::find("fedora").expect("fedora profile exists");
-    let cfg = Config::from_str(profile.toml).unwrap();
-    assert_eq!(cfg.image.base, "fedora");
+    let cfg = Config::from_str(&profile.toml).unwrap();
+    assert_eq!(cfg.image.base, "fedora-latest");
     assert!(cfg.image.prebuilt);
 }
 
 #[test]
 fn profile_gaming_parses() {
     let profile = podmgr::profiles::find("gaming").expect("gaming profile exists");
-    let cfg = Config::from_str(profile.toml).unwrap();
-    assert_eq!(cfg.image.base, "cachy");
+    let cfg = Config::from_str(&profile.toml).unwrap();
+    assert_eq!(cfg.image.base, "cachy-latest");
     assert!(cfg.integration.wayland);
     assert_eq!(cfg.integration.gpu, podmgr::config::GpuMode::Enabled);
 }
@@ -195,7 +256,7 @@ fn profile_unknown_returns_none() {
 #[test]
 fn profile_list_contains_all() {
     let names = podmgr::profiles::list_names();
-    assert!(names.contains(&"cachy"));
-    assert!(names.contains(&"fedora"));
-    assert!(names.contains(&"gaming"));
+    assert!(names.iter().any(|n| n == "cachy"));
+    assert!(names.iter().any(|n| n == "fedora"));
+    assert!(names.iter().any(|n| n == "gaming"));
 }

@@ -96,6 +96,12 @@ pub enum Command {
         name: String,
     },
 
+    /// Enter a container by name (shortcut for --container <name> shell).
+    Enter {
+        /// Container name to enter.
+        name: String,
+    },
+
     /// Initialize a new container config from a profile.
     Init {
         /// Profile name (cachy, fedora, gaming, or full path).

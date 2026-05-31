@@ -50,7 +50,7 @@ fn dry_enable_shows_quadlet_container_section() {
     cmd.assert()
         .success()
         .stdout(predicates::str::contains("[Container]"))
-        .stdout(predicates::str::contains("UserNS=keep-id"));
+        .stdout(predicates::str::contains("Environment=HOME=/home/%u"));
 }
 
 #[test]

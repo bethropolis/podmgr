@@ -17,6 +17,7 @@ fn load_config(name: &str) -> Config {
 fn default_env() -> HostEnv {
     HostEnv {
         uid: 1000,
+        username: "bet".into(),
         xdg_runtime_dir: PathBuf::from("/run/user/1000"),
         wayland_display: Some("wayland-0".into()),
         wayland_socket: Some(PathBuf::from("/run/user/1000/wayland-0")),
@@ -110,10 +111,10 @@ fn quadlet_container_has_userns_keep_id() {
 }
 
 #[test]
-fn quadlet_container_no_security_label_disable() {
+fn quadlet_container_has_security_label_disable() {
     let config = load_config("full.toml");
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(!q.contains("SecurityLabelDisable"));
+    assert!(q.contains("SecurityLabelDisable=true"));
 }
 
 #[test]
@@ -129,6 +130,7 @@ fn quadlet_wayland_volume_present_when_enabled() {
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
     assert!(q.contains("Volume=%t/wayland-0:%t/wayland-0"));
     assert!(q.contains("Environment=WAYLAND_DISPLAY=wayland-0"));
+    assert!(q.contains("Environment=MOZ_ENABLE_WAYLAND=1"));
 }
 
 #[test]
@@ -137,6 +139,7 @@ fn quadlet_wayland_absent_when_disabled() {
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
     assert!(!q.contains("wayland-0"));
     assert!(!q.contains("WAYLAND_DISPLAY"));
+    assert!(!q.contains("MOZ_ENABLE_WAYLAND"));
 }
 
 #[test]
@@ -162,8 +165,12 @@ fn quadlet_dbus_present() {
 fn quadlet_xdg_dir_present_when_enabled() {
     let config = load_config("full.toml");
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=/home/user/Documents:/root/Documents:z"));
-    assert!(q.contains("Volume=/home/user/Downloads:/root/Downloads:z"));
+    assert!(q.contains("Volume=/home/user/Documents:/home/%u/Documents:z"));
+    assert!(q.contains("Volume=/home/user/Downloads:/home/%u/Downloads:z"));
+    assert!(q.contains("Environment=HOME=/home/%u"));
+    assert!(q.contains("Environment=HOST_USER=%u"));
+    assert!(q.contains("Environment=HOST_UID=%U"));
+    assert!(q.contains("Environment=HOST_GID=%G"));
 }
 
 #[test]
@@ -183,7 +190,7 @@ fn quadlet_no_host_home_mount() {
     // Host home alone must never appear as Volume source
     assert!(!q.contains(&format!("{}:", home_str)));
     // Expanded config.home path is used
-    assert!(q.contains(&format!("Volume={}/containers/myenv:/root:Z", home_str)));
+    assert!(q.contains(&format!("Volume={}/containers/myenv:/home/%u:Z", home_str)));
 }
 
 #[test]
@@ -351,12 +358,16 @@ fn quadlet_systemd_dependencies_absent_by_default() {
 
 #[test]
 fn quadlet_visual_themes_present() {
+    // Create host dirs so the existence check passes
+    let home = dirs::home_dir().unwrap();
+    std::fs::create_dir_all(home.join(".local/share/themes")).ok();
+    let _ = std::fs::create_dir_all(home.join(".themes")).ok();
     let config = load_config("full.toml");
     let mut config = config.clone();
     config.integration.sync_themes = true;
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=%h/.themes:/root/.themes:ro"));
-    assert!(q.contains("Volume=%h/.local/share/themes:/root/.local/share/themes:ro"));
+    assert!(q.contains("Volume=%h/.themes:/home/%u/.themes:ro"));
+    assert!(q.contains("Volume=%h/.local/share/themes:/home/%u/.local/share/themes:ro"));
 }
 
 #[test]
@@ -365,7 +376,7 @@ fn quadlet_visual_icons_present() {
     let mut config = config.clone();
     config.integration.sync_icons = true;
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=%h/.icons:/root/.icons:ro"));
+    assert!(q.contains("Volume=%h/.icons:/home/%u/.icons:ro"));
 }
 
 #[test]
@@ -374,8 +385,8 @@ fn quadlet_visual_fonts_present() {
     let mut config = config.clone();
     config.integration.sync_fonts = true;
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=%h/.fonts:/root/.fonts:ro"));
-    assert!(q.contains("Volume=%h/.config/fontconfig:/root/.config/fontconfig:ro"));
+    assert!(q.contains("Volume=%h/.fonts:/home/%u/.fonts:ro"));
+    assert!(q.contains("Volume=%h/.config/fontconfig:/home/%u/.config/fontconfig:ro"));
 }
 
 #[test]
@@ -385,9 +396,9 @@ fn quadlet_visual_mounts_absent_by_default() {
     assert!(!q.contains("Volume=%h/.themes"));
     assert!(!q.contains("Volume=%h/.icons"));
     assert!(!q.contains("Volume=%h/.fonts"));
-    assert!(!q.contains("/root/.themes"));
-    assert!(!q.contains("/root/.icons"));
-    assert!(!q.contains("/root/.fonts"));
+    assert!(!q.contains("/home/%u/.themes"));
+    assert!(!q.contains("/home/%u/.icons"));
+    assert!(!q.contains("/home/%u/.fonts"));
 }
 
 #[test]

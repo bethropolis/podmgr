@@ -69,8 +69,6 @@ dockers_v2:
       podmgr.integration.dbus: "true"
       podmgr.shell: "/bin/bash"
       podmgr.default_shell: "/bin/bash"
-    extra_files:
-      - images/_base/podmgr-entry.sh
 
   - id: fedora
     ids:
@@ -98,8 +96,6 @@ dockers_v2:
       podmgr.integration.dbus: "true"
       podmgr.shell: "/bin/bash"
       podmgr.default_shell: "/bin/bash"
-    extra_files:
-      - images/_base/podmgr-entry.sh
 
 release:
   github:

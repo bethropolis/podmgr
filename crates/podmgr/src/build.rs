@@ -121,6 +121,11 @@ fn run_prebuilt(config: &Config, dry_run: bool, rebuild: bool) -> Result<()> {
 
     println!("Image {} ready.", local_tag);
 
+    let context_dir = build_context_dir(&config.container.name);
+    std::fs::create_dir_all(&context_dir)
+        .with_context(|| format!("failed to create context dir '{}'", context_dir.display()))?;
+    std::fs::create_dir_all(&config.container.home)
+        .with_context(|| format!("failed to create home dir '{}'", config.container.home.display()))?;
     let digest = crate::podman::image_digest(&local_tag)?;
     let lock = crate::lock::LockFile {
         config_checksum: checksum(&image_ref),
@@ -203,6 +208,9 @@ fn run_build(
     let guest_dest = context_dir.join("podmgr-guest");
     std::fs::copy(&guest_bin, &guest_dest)
         .with_context(|| format!("failed to copy guest binary to '{}'", guest_dest.display()))?;
+
+    std::fs::create_dir_all(&config.container.home)
+        .with_context(|| format!("failed to create home dir '{}'", config.container.home.display()))?;
 
     let tag = format!("localhost/podmgr-{}:latest", config.image.name);
     let args: Vec<OsString> = vec![

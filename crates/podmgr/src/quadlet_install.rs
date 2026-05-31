@@ -1,20 +1,27 @@
 use std::path::PathBuf;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 
 use crate::codegen::quadlet;
 use crate::config::Config;
 use crate::env::HostEnv;
 use crate::xdg::ResolvedXdgDirs;
 
-/// Directory for user Quadlet files.
+/// Directory for user Quadlet source files.
 fn quadlet_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("~/.config"))
         .join("containers/systemd")
 }
 
-/// Install Quadlet files for a container.
+/// Directory for user systemd unit files.
+fn systemd_user_dir() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("~/.config"))
+        .join("systemd/user")
+}
+
+/// Install systemd service and socket files for a container.
 pub fn install(
     config: &Config,
     env: &HostEnv,
@@ -23,19 +30,27 @@ pub fn install(
 ) -> Result<()> {
     let name = &config.container.name;
     let qdir = quadlet_dir();
+    let sdir = systemd_user_dir();
     let context_dir = crate::build::build_context_dir(name);
     let containerfile_path = context_dir.join("Containerfile");
 
-    let build_content = quadlet::generate_build(config, &containerfile_path);
     let socket_content = quadlet::generate_socket(config);
     let container_content = quadlet::generate_container(config, env, xdg);
     let host_service_content = quadlet::generate_host_service(name);
     let dbus_proxy_content = quadlet::generate_dbus_proxy_service(name, config);
 
+    let build_content = if !config.image.prebuilt {
+        Some(quadlet::generate_build(config, &containerfile_path))
+    } else {
+        None
+    };
+
     if dry_run {
-        println!("=== {}.build ===", name);
-        println!("{}", build_content);
-        println!();
+        if let Some(ref bc) = build_content {
+            println!("=== {}.build ===", name);
+            println!("{}", bc);
+            println!();
+        }
         println!("=== {}.socket ===", name);
         println!("{}", socket_content);
         println!();
@@ -52,23 +67,33 @@ pub fn install(
         return Ok(());
     }
 
-    std::fs::create_dir_all(&qdir)?;
+    // Ensure home and runtime dirs exist
+    std::fs::create_dir_all(&config.container.home)
+        .with_context(|| format!("failed to create home dir '{}'", config.container.home.display()))?;
 
-    std::fs::write(qdir.join(format!("{}.build", name)), build_content)?;
-    std::fs::write(qdir.join(format!("{}.socket", name)), socket_content)?;
+    // Quadlet source files → ~/.config/containers/systemd/
+    std::fs::create_dir_all(&qdir)?;
+    if let Some(ref bc) = build_content {
+        std::fs::write(qdir.join(format!("{}.build", name)), bc)?;
+    }
     std::fs::write(
         qdir.join(format!("{}.container", name)),
         container_content,
     )?;
+
+    // Systemd unit files → ~/.config/systemd/user/
+    std::fs::create_dir_all(&sdir)?;
+    std::fs::write(sdir.join(format!("{}.socket", name)), socket_content)?;
     std::fs::write(
-        qdir.join(format!("{}-host.service", name)),
+        sdir.join(format!("{}-host.service", name)),
         host_service_content,
     )?;
     if let Some(ref proxy) = dbus_proxy_content {
-        std::fs::write(qdir.join(format!("{}-proxy.service", name)), proxy)?;
+        std::fs::write(sdir.join(format!("{}-proxy.service", name)), proxy)?;
     }
 
     println!("Quadlet files installed to {}", qdir.display());
+    println!("Systemd units installed to {}", sdir.display());
 
     // Auto-export apps and bins
     for app in &config.integration.export.apps {
@@ -82,12 +107,12 @@ pub fn install(
         }
     }
 
-    // daemon-reload
-    let reload_args: Vec<std::ffi::OsString> = vec![
-        "--user".into(),
-        "daemon-reload".into(),
-    ];
+    // daemon-reload + reset-failed
     if which::which("systemctl").is_ok() {
+        let reload_args: Vec<std::ffi::OsString> = vec![
+            "--user".into(),
+            "daemon-reload".into(),
+        ];
         let output = crate::process::run_piped("systemctl", &reload_args)?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
@@ -95,6 +120,15 @@ pub fn install(
         } else {
             println!("systemd daemon-reload complete.");
         }
+        let reset_args: Vec<std::ffi::OsString> = vec![
+            "--user".into(),
+            "reset-failed".into(),
+            format!("{}.service", name).into(),
+            format!("{}.socket", name).into(),
+            format!("{}-host.service", name).into(),
+            format!("{}-proxy.service", name).into(),
+        ];
+        let _ = crate::process::run_piped("systemctl", &reset_args);
     } else {
         eprintln!("Warning: systemctl not found. Skipping daemon-reload.");
     }
@@ -120,27 +154,28 @@ pub fn install(
     Ok(())
 }
 
-/// Remove Quadlet files for a container.
+/// Remove Quadlet and systemd files for a container.
 pub fn uninstall(name: &str) -> Result<()> {
     let qdir = quadlet_dir();
+    let sdir = systemd_user_dir();
 
-    for ext in ["build", "socket", "container"] {
+    // Remove from Quadlet dir
+    for ext in ["build", "container"] {
         let path = qdir.join(format!("{}.{}", name, ext));
         if path.exists() {
             std::fs::remove_file(&path)?;
         }
     }
 
-    // Host socket server companion service
-    let host_path = qdir.join(format!("{}-host.service", name));
-    if host_path.exists() {
-        std::fs::remove_file(&host_path)?;
-    }
+    // Remove from systemd user unit dir
+    let socket_path = sdir.join(format!("{}.socket", name));
+    let host_path = sdir.join(format!("{}-host.service", name));
+    let proxy_path = sdir.join(format!("{}-proxy.service", name));
 
-    // D-Bus proxy companion service
-    let proxy_path = qdir.join(format!("{}-proxy.service", name));
-    if proxy_path.exists() {
-        std::fs::remove_file(&proxy_path)?;
+    for path in [socket_path, host_path, proxy_path] {
+        if path.exists() {
+            std::fs::remove_file(&path)?;
+        }
     }
 
     // daemon-reload
@@ -154,6 +189,6 @@ pub fn uninstall(name: &str) -> Result<()> {
         }
     }
 
-    println!("Quadlet files for '{}' removed.", name);
+    println!("Files for '{}' removed.", name);
     Ok(())
 }

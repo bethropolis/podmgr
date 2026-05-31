@@ -1,12 +1,7 @@
 FROM cachyos/cachyos:latest
 
-# Install podmgr-guest and entrypoint
 COPY podmgr-guest /usr/local/bin/podmgr-guest
-COPY images/_base/podmgr-entry.sh /usr/local/bin/podmgr-entry
 
-RUN chmod +x /usr/local/bin/podmgr-entry
-
-# OCI labels for podmgr host-side detection
 LABEL podmgr.guest_version="0.2.0"
 LABEL podmgr.protocol_version="1"
 LABEL podmgr.integration.wayland="true"
@@ -16,5 +11,5 @@ LABEL podmgr.integration.dbus="true"
 LABEL podmgr.shell="/bin/bash"
 LABEL podmgr.default_shell="/bin/bash"
 
-ENTRYPOINT ["/usr/local/bin/podmgr-entry"]
+ENTRYPOINT ["/usr/local/bin/podmgr-guest", "--entry"]
 CMD ["/bin/bash"]

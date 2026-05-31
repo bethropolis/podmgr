@@ -1,8 +1,12 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use crate::config::{Config, GpuMode};
 use crate::env::HostEnv;
 use crate::xdg::ResolvedXdgDirs;
+
+fn home() -> PathBuf {
+    dirs::home_dir().unwrap_or_else(|| PathBuf::from("/root"))
+}
 
 /// Generate the `.build` Quadlet file.
 pub fn generate_build(config: &Config, containerfile_path: &Path) -> String {
@@ -56,6 +60,7 @@ pub fn generate_container(
     xdg: &ResolvedXdgDirs,
 ) -> String {
     let name = &config.container.name;
+    let home_in_container = "/home/%u";
     let mut lines: Vec<String> = Vec::new();
 
     // [Unit]
@@ -77,20 +82,26 @@ pub fn generate_container(
         lines.push(format!("After={}-proxy.service", name));
     }
 
-
-
     lines.push(String::new());
 
     // [Container]
     lines.push("[Container]".into());
-    lines.push(format!("Image=podmgr-{}.build", config.image.name));
+    if config.image.prebuilt {
+        let ref_str = crate::config::resolve_image_ref_full(config);
+        lines.push(format!("Image={}", ref_str));
+    } else {
+        lines.push(format!("Image=podmgr-{}.build", config.image.name));
+    }
     lines.push(format!("ContainerName={}", name));
     lines.push("UserNS=keep-id".into());
-    lines.push("Environment=HOME=/root".into());
+    lines.push("SecurityLabelDisable=true".into());
+    lines.push(format!("Environment=HOME={}", home_in_container));
+    lines.push("Environment=HOST_USER=%u".into());
+    lines.push("Environment=HOST_UID=%U".into());
+    lines.push("Environment=HOST_GID=%G".into());
     lines.push(String::new());
 
     // Isolated custom home
-    let home_in_container = "/root";
     let host_home = config.container.home.to_string_lossy().to_string();
     lines.push(format!(
         "Volume={host_home}:{home_in_container}:Z",
@@ -116,16 +127,30 @@ pub fn generate_container(
     }
 
     // Visual integration: themes, fonts, icons
+    // Skip mounts when the host path doesn't exist.
     if config.integration.sync_themes {
-        lines.push("Volume=%h/.themes:/root/.themes:ro".into());
-        lines.push("Volume=%h/.local/share/themes:/root/.local/share/themes:ro".into());
+        let h = home();
+        if h.join(".themes").exists() {
+            lines.push(format!("Volume=%h/.themes:{home_in_container}/.themes:ro"));
+        }
+        if h.join(".local/share/themes").exists() {
+            lines.push(format!("Volume=%h/.local/share/themes:{home_in_container}/.local/share/themes:ro"));
+        }
     }
     if config.integration.sync_icons {
-        lines.push("Volume=%h/.icons:/root/.icons:ro".into());
+        let h = home();
+        if h.join(".icons").exists() {
+            lines.push(format!("Volume=%h/.icons:{home_in_container}/.icons:ro"));
+        }
     }
     if config.integration.sync_fonts {
-        lines.push("Volume=%h/.fonts:/root/.fonts:ro".into());
-        lines.push("Volume=%h/.config/fontconfig:/root/.config/fontconfig:ro".into());
+        let h = home();
+        if h.join(".fonts").exists() {
+            lines.push(format!("Volume=%h/.fonts:{home_in_container}/.fonts:ro"));
+        }
+        if h.join(".config/fontconfig").exists() {
+            lines.push(format!("Volume=%h/.config/fontconfig:{home_in_container}/.config/fontconfig:ro"));
+        }
     }
     if config.integration.sync_themes || config.integration.sync_icons || config.integration.sync_fonts {
         lines.push(String::new());
@@ -139,6 +164,7 @@ pub fn generate_container(
                 display
             ));
             lines.push("Environment=XDG_RUNTIME_DIR=%t".into());
+            lines.push("Environment=MOZ_ENABLE_WAYLAND=1".into());
             lines.push(format!(
                 "Volume=%t/{}:%t/{}",
                 display, display

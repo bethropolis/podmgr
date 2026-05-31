@@ -79,6 +79,12 @@ fn run() -> Result<()> {
         _ => {}
     }
 
+    // Resolve container name from Enter command if provided
+    let enter_name = match &cli.command {
+        Command::Enter { name } => Some(name.clone()),
+        _ => None,
+    };
+
     // Load config for all other commands
     let mut config = if let Some(ref path) = cli.config {
         match Config::load(path) {
@@ -89,7 +95,7 @@ fn run() -> Result<()> {
             }
             Err(e) => return Err(e),
         }
-    } else if let Some(ref container_name) = cli.container {
+    } else if let Some(ref container_name) = enter_name.or_else(|| cli.container.clone()) {
         let config_dir = config::config_dir();
         let config_path = config_dir.join(format!("{}.toml", container_name));
         Config::load(&config_path)?
@@ -170,7 +176,7 @@ fn run() -> Result<()> {
             }
         }
 
-        Command::Shell => {
+        Command::Shell | Command::Enter { .. } => {
             let tty_flag = if nix::unistd::isatty(0).unwrap_or(false) {
                 OsString::from("-it")
             } else {
@@ -179,6 +185,8 @@ fn run() -> Result<()> {
             if cli.dry_run {
                 let exec_args: Vec<OsString> = vec![
                     "exec".into(),
+                    "-u".into(),
+                    env.username.clone().into(),
                     tty_flag,
                     name.clone().into(),
                     config.container.shell.clone().into(),
@@ -189,6 +197,8 @@ fn run() -> Result<()> {
             ensure_running(&name, cli.dry_run)?;
             let exec_args: Vec<OsString> = vec![
                 "exec".into(),
+                "-u".into(),
+                env.username.clone().into(),
                 tty_flag,
                 name.clone().into(),
                 config.container.shell.clone().into(),
@@ -205,7 +215,7 @@ fn run() -> Result<()> {
             };
             if cli.dry_run {
                 let mut exec_args: Vec<OsString> =
-                    vec!["exec".into(), tty_flag.clone(), name.clone().into()];
+                    vec!["exec".into(), "-u".into(), env.username.clone().into(), tty_flag.clone(), name.clone().into()];
                 for a in cmd_args {
                     exec_args.push(a.into());
                 }
@@ -214,7 +224,7 @@ fn run() -> Result<()> {
             }
             ensure_running(&name, cli.dry_run)?;
             let mut exec_args: Vec<OsString> =
-                vec!["exec".into(), tty_flag.clone(), name.clone().into()];
+                vec!["exec".into(), "-u".into(), env.username.clone().into(), tty_flag.clone(), name.clone().into()];
             for a in cmd_args {
                 exec_args.push(a.into());
             }
@@ -226,6 +236,8 @@ fn run() -> Result<()> {
             if cli.dry_run {
                 let mut exec_args: Vec<OsString> = vec![
                     "exec".into(),
+                    "-u".into(),
+                    env.username.clone().into(),
                     "-d".into(),
                     name.clone().into(),
                     app.clone().into(),
@@ -239,6 +251,8 @@ fn run() -> Result<()> {
             ensure_running(&name, cli.dry_run)?;
             let mut exec_args: Vec<OsString> = vec![
                 "exec".into(),
+                "-u".into(),
+                env.username.clone().into(),
                 "-d".into(),
                 name.clone().into(),
                 app.clone().into(),
@@ -404,11 +418,22 @@ fn run() -> Result<()> {
             if !tag_status.success() {
                 return Err(PodmgrError::TagFailed(image_ref.clone()).into());
             }
-            // Write lock file
+            // Write lock file in unified .podmgr.lock format
             let context_dir = podmgr::build::build_context_dir(&config.image.name);
             std::fs::create_dir_all(&context_dir)?;
-            let lock_path = context_dir.join("prebuilt.lock");
-            std::fs::write(&lock_path, &image_ref)?;
+            let local_tag = format!("localhost/podmgr-{}:latest", config.image.name);
+            let digest = podmgr::podman::image_digest(&local_tag)?;
+            let lock = podmgr::lock::LockFile {
+                config_checksum: {
+                    use sha2::Digest;
+                    let mut hasher = sha2::Sha256::new();
+                    hasher.update(image_ref.as_bytes());
+                    hex::encode(hasher.finalize())
+                },
+                image_digest: digest,
+            };
+            let lock_path = context_dir.join(".podmgr.lock");
+            podmgr::lock::write(&lock_path, &lock)?;
             println!("Lock file written to {}", lock_path.display());
             return Ok(());
         }
@@ -551,7 +576,7 @@ fn run_init(dry_run: bool, profile: Option<&str>, name: Option<&str>) -> Result<
                     names.join(", ")
                 )
             })?;
-            found.toml.to_string()
+            found.toml
         }
         None => {
             let profiles = podmgr::profiles::all();
@@ -587,10 +612,9 @@ fn run_init(dry_run: bool, profile: Option<&str>, name: Option<&str>) -> Result<
     println!("Created config: {}", config_path.display());
     println!();
     println!("Next steps:");
-    println!("  1. podmgr pull  -- pull the prebuilt image");
-    println!("  2. podmgr build -- build or set up the container");
-    println!("  3. podmgr enable -- install Quadlet systemd files");
-    println!("  4. systemctl --user start {}", container_name);
+    println!("  1. podmgr build -- pull the prebuilt image and set up the container");
+    println!("  2. podmgr enable -- install Quadlet systemd files");
+    println!("  3. systemctl --user start {}", container_name);
 
     Ok(())
 }

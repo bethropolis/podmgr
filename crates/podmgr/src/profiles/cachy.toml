@@ -1,9 +1,9 @@
 [image]
 name = "cachy"
-base = "cachy"
+base = "cachy-latest"
 prebuilt = true
 prebuilt_registry = "ghcr.io"
-prebuilt_repo = "podmgr-images"
+prebuilt_repo = "bethropolis/podmgr-images"
 
 [container]
 name = "cachy"

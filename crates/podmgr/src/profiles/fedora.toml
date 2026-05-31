@@ -1,9 +1,9 @@
 [image]
 name = "fedora"
-base = "fedora"
+base = "fedora-latest"
 prebuilt = true
 prebuilt_registry = "ghcr.io"
-prebuilt_repo = "podmgr-images"
+prebuilt_repo = "bethropolis/podmgr-images"
 
 [container]
 name = "fedora"
