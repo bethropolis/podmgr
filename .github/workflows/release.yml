@@ -40,15 +40,13 @@ jobs:
 
       - uses: goreleaser/goreleaser-action@v6
         with:
-          args: release --clean --skip-upload
+          args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Create GitHub Release
+      - name: Upload release artifacts
         run: |
-          gh release create "${{ github.ref_name }}" \
-            --title "${{ github.ref_name }}" \
-            --generate-notes \
-            ./dist/*.tar.gz ./dist/*.txt
+          gh release upload "${{ github.ref_name }}" \
+            ./dist/*.tar.gz ./dist/*.txt --clobber
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

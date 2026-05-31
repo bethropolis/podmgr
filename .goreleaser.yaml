@@ -101,5 +101,11 @@ dockers_v2:
     extra_files:
       - images/_base/podmgr-entry.sh
 
+release:
+  github:
+    owner: "{{ .Env.GITHUB_REPOSITORY_OWNER }}"
+    name: podmgr
+  skip_upload: true
+
 changelog:
   use: github
