@@ -67,8 +67,8 @@ dockers_v2:
       podmgr.integration.audio: "true"
       podmgr.integration.gpu: "true"
       podmgr.integration.dbus: "true"
-      podmgr.shell: "/bin/bash"
-      podmgr.default_shell: "/bin/bash"
+      podmgr.shell: "/usr/bin/fish"
+      podmgr.default_shell: "/usr/bin/fish"
 
   - id: fedora
     ids:
@@ -94,8 +94,8 @@ dockers_v2:
       podmgr.integration.audio: "true"
       podmgr.integration.gpu: "true"
       podmgr.integration.dbus: "true"
-      podmgr.shell: "/bin/bash"
-      podmgr.default_shell: "/bin/bash"
+      podmgr.shell: "/usr/bin/fish"
+      podmgr.default_shell: "/usr/bin/fish"
 
 release:
   github:
