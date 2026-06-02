@@ -23,7 +23,16 @@ jobs:
         run: rustup target add x86_64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-unknown-linux-gnu aarch64-unknown-linux-musl
 
       - name: Install musl-tools
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+        run: sudo apt-get update && sudo apt-get install -y musl-tools gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu
+
+      - name: Install zig (cross-compiler for aarch64-musl)
+        run: |
+          curl -sSfL https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz | sudo tar -xJ -C /opt
+          sudo ln -sf /opt/zig-linux-x86_64-0.14.0/zig /usr/local/bin/zig
+          printf '#!/bin/bash\nexec zig cc -target aarch64-linux-musl "$@"\n' | sudo tee /usr/local/bin/aarch64-linux-musl-gcc >/dev/null
+          printf '#!/bin/bash\nexec zig cc -target aarch64-linux-musl "$@"\n' | sudo tee /usr/local/bin/aarch64-linux-musl-g++ >/dev/null
+          printf '#!/bin/bash\nexec zig ar "$@"\n' | sudo tee /usr/local/bin/aarch64-linux-musl-ar >/dev/null
+          sudo chmod +x /usr/local/bin/aarch64-linux-musl-gcc /usr/local/bin/aarch64-linux-musl-g++ /usr/local/bin/aarch64-linux-musl-ar
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -43,6 +52,9 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CC_aarch64_unknown_linux_gnu: aarch64-linux-gnu-gcc
+          CC_aarch64_unknown_linux_musl: aarch64-linux-musl-gcc
+          AR_aarch64_unknown_linux_musl: aarch64-linux-musl-ar
 
       - name: Upload release artifacts
         run: |
