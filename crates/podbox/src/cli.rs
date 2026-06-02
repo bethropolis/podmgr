@@ -25,6 +25,8 @@ pub struct Cli {
 pub enum Command {
     /// Build the container image from the definition.
     Build {
+        /// Container name to build (overrides auto-detection).
+        name: Option<String>,
         /// Force rebuild even if definition hasn't changed.
         #[arg(long)]
         rebuild: bool,

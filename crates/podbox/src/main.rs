@@ -111,9 +111,10 @@ fn run() -> Result<()> {
         _ => {}
     }
 
-    // Resolve container name from Enter command if provided
+    // Resolve container name from Enter or Build commands if provided
     let enter_name = match &cli.command {
         Command::Enter { name } => Some(name.clone()),
+        Command::Build { name, .. } => name.clone(),
         _ => None,
     };
 
@@ -161,7 +162,7 @@ fn run() -> Result<()> {
     let xdg = podbox::xdg::resolve(&config.integration.xdg_dirs)?;
 
     match &cli.command {
-        Command::Build { rebuild } => {
+        Command::Build { name: _, rebuild } => {
             podbox::build::run(&config, &env, &xdg, cli.dry_run, *rebuild)?;
             if !cli.dry_run && config.lifecycle.quadlet {
                 println!("\nRun `podbox enable` to install Quadlet files.");

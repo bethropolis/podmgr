@@ -200,24 +200,29 @@ fn prompt_name(default: &str, config_dir: &std::path::Path) -> anyhow::Result<St
 }
 
 fn prompt_shell(detected: &ShellInfo) -> ShellInfo {
-    let hint = if detected.detected {
-        " (detected from $SHELL)".to_string()
-    } else {
-        String::new()
-    };
-    let default: String = detected.full_path.clone();
+    if detected.detected {
+        let ok = dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+            .with_prompt(format!("Use detected shell {}?", detected.full_path))
+            .default(true)
+            .interact()
+            .expect("failed to get shell confirmation");
+        if ok {
+            return shell_info_from_bin(&detected.bin_name);
+        }
+    }
+    let fallback = "/usr/bin/bash";
     let input: String = dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
-        .with_prompt(format!("Shell path{}", hint))
-        .default(default)
+        .with_prompt("Shell path")
+        .default(fallback.to_string())
         .interact_text()
         .expect("failed to get shell input");
     let bin = std::path::Path::new(&input)
         .file_name()
         .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| "fish".to_string());
+        .unwrap_or_else(|| "bash".to_string());
     let mut info = shell_info_from_bin(&bin);
     info.full_path = input;
-    info.detected = detected.detected;
+    info.detected = false;
     info
 }
 
