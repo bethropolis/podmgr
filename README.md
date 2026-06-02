@@ -1,48 +1,63 @@
+<p align="center">
+  <img src="https://img.shields.io/github/v/tag/bethropolis/podmgr?label=version" alt="Version">
+  <img src="https://img.shields.io/github/actions/workflow/status/bethropolis/podmgr/ci.yml?label=CI" alt="CI">
+  <img src="https://img.shields.io/github/license/bethropolis/podmgr" alt="License">
+  <br>
+  <em>Define once. Run anywhere. No daemon.</em>
+</p>
+
 # podmgr
 
-A Podman-native tool that turns a single TOML definition into a fully integrated,
-systemd-managed container. One command to create, build, and start a container
-with Wayland/audio/GPU passthrough, XDG directory sharing, and GUI app export —
-no daemon, no mounting your whole home directory.
+A Podman-native tool that turns a single TOML config into a fully integrated,
+systemd-managed container — with Wayland, audio, GPU passthrough, XDG directory
+sharing, and GUI app export. No daemon, no privilege escalation, no mounting
+your whole home directory.
 
 ## Quick Start
 
 ```bash
 git clone https://github.com/bethropolis/podmgr && cd podmgr
-scripts/install.sh                       # install to ~/.local/bin
-podmgr create fedora                     # pull, build, enable, start
-podmgr shell                             # jump into the shell
+scripts/install.sh
+podmgr create fedora    # pull, build, enable, start in one command
+podmgr shell            # jump into the shell
 ```
 
-## Essential Workflows
+## What It Does
+
+| You give it... | podmgr gives you... |
+|---|---|
+| A TOML profile or OCI image reference | A systemd-managed Podman container |
+| A package name (`firefox`, `htop`, ...) | The app baked into the image |
+| `podmgr export app firefox` | `"Firefox (cachy)"` in your app launcher |
+
+## Usage
 
 ```bash
-# Create a container from a built-in profile or any OCI image
+# Create containers
 podmgr create cachy                      # Arch-based CachyOS
 podmgr create fedora --name dev          # custom name
-podmgr create ghcr.io/user/img           # or any image reference
+podmgr create ghcr.io/user/img           # any image
 
-# Run apps
-podmgr run firefox                       # detached GUI app
+# Run GUI apps
+podmgr run firefox                       # detached, Wayland/GPU/pulse
 podmgr exec -- htop                      # interactive command
-podmgr shell                             # open a shell
+podmgr shell                             # drop into a shell
 
-# Export apps to your launcher
-podmgr export app firefox                # "Firefox (cachy)" in app menu
-podmgr export bin firefox                # "firefox" in any terminal
+# Export to your launcher
+podmgr export app firefox                # desktop entry
+podmgr export bin firefox                # terminal shim
 
-# Add packages to your image
+# Customize
 # Edit ~/.config/podmgr/cachy.toml:
 #   [image.packages]
-#   manager = "pacman"
 #   install = ["firefox", "htop"]
-podmgr build --rebuild                   # bakes them into the image
+podmgr build --rebuild
 
-# Diagnose issues
-podmgr doctor                            # check everything is healthy
+# Diagnostics
+podmgr doctor                            # health check
 podmgr doctor --fix                      # auto-repair
 
-# Remove
+# Tear down
 podmgr stop && podmgr remove --all
 ```
 
