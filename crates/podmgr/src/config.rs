@@ -193,13 +193,15 @@ pub struct IntegrationConfig {
     pub xdg_open: bool,
     #[serde(default)]
     pub clipboard: bool,
-    /// Bind-mount host font directories (`~/.fonts`, `~/.config/fontconfig`) as read-only.
+    /// Bind-mount host font directory (`~/.fonts`) as read-only.
+    /// Only top-level directories are mounted to keep `.local` and `.config` writable.
     #[serde(default)]
     pub sync_fonts: bool,
     /// Bind-mount host icon directory (`~/.icons`) as read-only.
     #[serde(default)]
     pub sync_icons: bool,
-    /// Bind-mount host theme directories (`~/.themes`, `~/.local/share/themes`) as read-only.
+    /// Bind-mount host theme directory (`~/.themes`) as read-only.
+    /// Only top-level directories are mounted to keep `.local` and `.config` writable.
     #[serde(default)]
     pub sync_themes: bool,
     #[serde(default)]
@@ -241,6 +243,8 @@ pub struct XdgDirConfig {
     pub videos: bool,
     #[serde(default)]
     pub desktop: bool,
+    #[serde(default)]
+    pub projects: bool,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]

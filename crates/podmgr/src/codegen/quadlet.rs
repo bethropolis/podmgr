@@ -116,6 +116,7 @@ pub fn generate_container(
     emit_xdg_dir(&mut lines, "Music", &xdg.music, home_in_container);
     emit_xdg_dir(&mut lines, "Videos", &xdg.videos, home_in_container);
     emit_xdg_dir(&mut lines, "Desktop", &xdg.desktop, home_in_container);
+    emit_xdg_dir(&mut lines, "Projects", &xdg.projects, home_in_container);
 
     if xdg.documents.is_some()
         || xdg.downloads.is_some()
@@ -123,19 +124,19 @@ pub fn generate_container(
         || xdg.music.is_some()
         || xdg.videos.is_some()
         || xdg.desktop.is_some()
+        || xdg.projects.is_some()
     {
         lines.push(String::new());
     }
 
     // Visual integration: themes, fonts, icons
     // Skip mounts when the host path doesn't exist.
+    // Only top-level directories are mounted to avoid making .local/ or .config/
+    // subdirectories read-only — those should remain writable inside the container.
     if config.integration.sync_themes {
         let h = home();
         if h.join(".themes").exists() {
             lines.push(format!("Volume=%h/.themes:{home_in_container}/.themes:ro"));
-        }
-        if h.join(".local/share/themes").exists() {
-            lines.push(format!("Volume=%h/.local/share/themes:{home_in_container}/.local/share/themes:ro"));
         }
     }
     if config.integration.sync_icons {
@@ -148,9 +149,6 @@ pub fn generate_container(
         let h = home();
         if h.join(".fonts").exists() {
             lines.push(format!("Volume=%h/.fonts:{home_in_container}/.fonts:ro"));
-        }
-        if h.join(".config/fontconfig").exists() {
-            lines.push(format!("Volume=%h/.config/fontconfig:{home_in_container}/.config/fontconfig:ro"));
         }
     }
     if config.integration.sync_themes || config.integration.sync_icons || config.integration.sync_fonts {

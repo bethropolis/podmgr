@@ -12,6 +12,7 @@ pub struct ResolvedXdgDirs {
     pub music: Option<PathBuf>,
     pub videos: Option<PathBuf>,
     pub desktop: Option<PathBuf>,
+    pub projects: Option<PathBuf>,
 }
 
 /// Resolve XDG user directories from the host.
@@ -29,6 +30,7 @@ pub fn resolve(config: &XdgDirConfig) -> Result<ResolvedXdgDirs> {
         music: resolve_dir(config.music, "MUSIC", "Music"),
         videos: resolve_dir(config.videos, "VIDEOS", "Videos"),
         desktop: resolve_dir(config.desktop, "DESKTOP", "Desktop"),
+        projects: resolve_dir(config.projects, "PROJECTS", "Projects"),
     })
 }
 

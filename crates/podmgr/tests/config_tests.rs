@@ -68,6 +68,7 @@ fn xdg_dirs_default_all_false() {
     assert!(!cfg.integration.xdg_dirs.music);
     assert!(!cfg.integration.xdg_dirs.videos);
     assert!(!cfg.integration.xdg_dirs.desktop);
+    assert!(!cfg.integration.xdg_dirs.projects);
 }
 
 #[test]

@@ -24,8 +24,8 @@ pub fn export_app(container_name: &str, app: &str) -> Result<()> {
     }
     let desktop_content = String::from_utf8_lossy(&output.stdout);
 
-    // 2. Rewrite Exec= line
-    let rewritten = rewrite_exec_line(&desktop_content, container_name, app);
+    // 2. Rewrite Name= and Exec= lines
+    let rewritten = rewrite_desktop_file(&desktop_content, container_name, app);
 
     // 3. Write host .desktop file
     let apps_dir = dirs::data_dir()
@@ -132,12 +132,19 @@ pub fn unexport_all(container_name: &str) -> Result<()> {
     Ok(())
 }
 
-fn rewrite_exec_line(content: &str, container_name: &str, _app: &str) -> String {
+fn rewrite_desktop_file(content: &str, container_name: &str, _app: &str) -> String {
+    let suffix = format!("({})", container_name);
     content
         .lines()
         .map(|line| {
             if let Some(original) = line.strip_prefix("Exec=") {
                 format!("Exec=podmgr --container \"{}\" exec -- {}", container_name.replace('"', "\\\""), original)
+            } else if let Some((key, val)) = line.split_once('=') {
+                if (key == "Name" || key.starts_with("Name[")) && !val.contains(&suffix) {
+                    format!("{}={} ({})", key, val, container_name)
+                } else {
+                    line.to_string()
+                }
             } else {
                 line.to_string()
             }

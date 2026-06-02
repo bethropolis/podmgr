@@ -38,6 +38,7 @@ fn default_xdg() -> ResolvedXdgDirs {
         music: None,
         videos: None,
         desktop: None,
+        projects: None,
     }
 }
 

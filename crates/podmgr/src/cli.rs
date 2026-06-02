@@ -133,7 +133,11 @@ pub enum Command {
     },
 
     /// Run diagnostic checks.
-    Doctor,
+    Doctor {
+        /// Auto-fix common issues (e.g. corrupted Wayland socket ownership).
+        #[arg(long)]
+        fix: bool,
+    },
 
     /// Generate shell completions.
     Completions {

@@ -149,6 +149,7 @@ fn quadlet_prebuilt_uses_registry_image() {
         music: None,
         videos: None,
         desktop: None,
+        projects: None,
     };
     let q = quadlet::generate_container(&config, &env, &xdg);
     assert!(q.contains("Image=ghcr.io/bethropolis/podmgr-images:cachy-latest"));
@@ -181,13 +182,12 @@ fn quadlet_custom_uses_build_ref() {
         music: None,
         videos: None,
         desktop: None,
+        projects: None,
     };
     let q = quadlet::generate_container(&config, &env, &xdg);
     assert!(q.contains("Image=podmgr-myenv.build"));
     assert!(!q.contains("Image=ghcr.io"));
 }
-
-// ---- Quadlet HOME fix ----
 
 #[test]
 fn quadlet_has_environment_home() {
@@ -213,6 +213,7 @@ fn quadlet_has_environment_home() {
         music: None,
         videos: None,
         desktop: None,
+        projects: None,
     };
     let q = quadlet::generate_container(&config, &env, &xdg);
     assert!(q.contains("Environment=HOME=/home/%u"));

@@ -58,6 +58,7 @@ pub fn apply_defaults(config: &mut Config, labels: &LabelMap) {
     apply_bool(labels, "podmgr.xdg_dirs.pictures", &mut int.xdg_dirs.pictures);
     apply_bool(labels, "podmgr.xdg_dirs.music", &mut int.xdg_dirs.music);
     apply_bool(labels, "podmgr.xdg_dirs.videos", &mut int.xdg_dirs.videos);
+    apply_bool(labels, "podmgr.xdg_dirs.projects", &mut int.xdg_dirs.projects);
 
     if let Some(gpu_str) = labels.get("podmgr.integration.gpu") {
         if config.integration.gpu == GpuMode::Auto {

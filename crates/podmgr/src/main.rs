@@ -484,8 +484,8 @@ fn run() -> Result<()> {
             return Ok(());
         }
 
-        Command::Doctor => {
-            run_doctor(&config, &env)?;
+        Command::Doctor { fix } => {
+            run_doctor(&config, &env, *fix)?;
         }
 
         Command::TranslatePath {
@@ -785,7 +785,7 @@ fn run_create(dry_run: bool, image: &str, name: Option<&str>, no_start: bool) ->
     Ok(())
 }
 
-fn run_doctor(config: &Config, env: &HostEnv) -> Result<()> {
+fn run_doctor(config: &Config, env: &HostEnv, fix: bool) -> Result<()> {
     let mut checks = 0;
     let mut passes = 0;
     let mut failures = 0;
@@ -838,9 +838,50 @@ fn run_doctor(config: &Config, env: &HostEnv) -> Result<()> {
     // 2. Wayland socket
     if config.integration.wayland {
         checks += 1;
-        if env.wayland_socket.is_some() {
+        if let Some(ref socket) = env.wayland_socket {
             println!("[PASS] Wayland socket found");
             passes += 1;
+
+            // Check ownership — must match env.uid to work through idmapped mounts
+            checks += 1;
+            match socket.metadata() {
+                Ok(meta) => {
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::MetadataExt;
+                        let owner = meta.uid();
+                        if owner != env.uid {
+                            println!(
+                                "[WARN] Wayland socket owner {} != host UID {}",
+                                owner, env.uid
+                            );
+                            if fix {
+                                match fix_wayland_socket_ownership(socket) {
+                                    Ok(()) => {
+                                        println!("       -> Ownership fixed");
+                                        passes += 1;
+                                    }
+                                    Err(e) => {
+                                        println!("       -> Fix failed: {e}");
+                                        failures += 1;
+                                    }
+                                }
+                            } else {
+                                println!(
+                                    "       Run with --fix to repair, or: podman unshare chown 0:0 {}",
+                                    socket.display()
+                                );
+                            }
+                        } else {
+                            println!("[PASS] Wayland socket owner correct");
+                            passes += 1;
+                        }
+                    }
+                }
+                Err(e) => {
+                    println!("[WARN] Could not stat Wayland socket: {e}");
+                }
+            }
         } else {
             println!(
                 "[WARN] Wayland socket not found (WAYLAND_DISPLAY may not be set)"
@@ -929,4 +970,23 @@ fn run_doctor(config: &Config, env: &HostEnv) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+fn fix_wayland_socket_ownership(socket: &std::path::Path) -> Result<()> {
+    let runtime_dir = socket.parent().ok_or_else(|| {
+        anyhow::anyhow!("Cannot determine runtime directory from socket path")
+    })?;
+
+    let output = std::process::Command::new("podman")
+        .args(["unshare", "chown", "0:0"])
+        .arg(socket)
+        .arg(runtime_dir)
+        .output()
+        .map_err(|e| anyhow::anyhow!("Failed to run podman unshare: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("podman unshare chown failed: {stderr}");
+    }
+    Ok(())
 }

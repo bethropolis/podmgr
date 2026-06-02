@@ -92,9 +92,9 @@ Controls which host resources are shared with the container.
 | `notify` | bool | `false` | Desktop notification forwarding |
 | `xdg_open` | bool | `false` | URI opening via host (`xdg-open`) |
 | `clipboard` | bool | `false` | Clipboard sharing |
-| `sync_fonts` | bool | `false` | Bind-mount `~/.fonts` and `~/.config/fontconfig` (read-only) |
+| `sync_fonts` | bool | `false` | Bind-mount `~/.fonts` (read-only). Only top-level dirs to keep `.local`/`.config` writable |
 | `sync_icons` | bool | `false` | Bind-mount `~/.icons` (read-only) |
-| `sync_themes` | bool | `false` | Bind-mount `~/.themes` and `~/.local/share/themes` (read-only) |
+| `sync_themes` | bool | `false` | Bind-mount `~/.themes` (read-only). Only top-level dirs to keep `.local`/`.config` writable |
 
 ### `GpuMode` values
 
@@ -115,6 +115,7 @@ Controls which host resources are shared with the container.
 | `music` | bool | `false` | Mount host `~/Music` |
 | `videos` | bool | `false` | Mount host `~/Videos` |
 | `desktop` | bool | `false` | Mount host `~/Desktop` |
+| `projects` | bool | `false` | Mount host `~/Projects` |
 
 ### `[integration.export]`
 
@@ -139,6 +140,7 @@ sync_themes = true
 [integration.xdg_dirs]
 documents = true
 downloads = true
+projects = true
 
 [integration.export]
 apps = ["gedit", "nautilus"]
@@ -253,6 +255,7 @@ clipboard = true
 [integration.xdg_dirs]
 documents = true
 downloads = true
+projects = true
 
 [integration.export]
 apps = ["gedit", "nautilus"]

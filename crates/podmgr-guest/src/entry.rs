@@ -186,6 +186,23 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
         let _ = std::fs::set_permissions(&sudo_file, PermissionsExt::from_mode(0o440));
     }
 
+    // 5. Make runtime directory writable by all
+    //    Needed so glib/dconf/Wayland proxy can create sockets at runtime.
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+        .unwrap_or_else(|_| format!("/run/user/{}", uid));
+    let _ = std::process::Command::new("chmod")
+        .args(["777", &runtime_dir])
+        .status();
+
+    // 6. dconf subdirectory
+    let dconf_dir = Path::new(&runtime_dir).join("dconf");
+    let _ = std::fs::create_dir_all(&dconf_dir);
+    let _ = std::process::Command::new("chown")
+        .args([uid.to_string().as_str(), gid.to_string().as_str(), dconf_dir.to_str().unwrap_or_default()])
+        .status();
+    let _ = std::process::Command::new("chmod")
+        .args(["700", &dconf_dir.to_string_lossy()])
+        .status();
 }
 
 

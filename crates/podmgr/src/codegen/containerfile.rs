@@ -1,10 +1,6 @@
 use crate::config::Config;
 
 /// Generate a Containerfile string from the config.
-///
-/// When `config.image.prebuilt` is true, emits a minimal Containerfile
-/// (FROM + ENV + ENTRYPOINT + CMD only) since the base image already
-/// contains everything needed.
 pub fn generate(config: &Config, _guest_binary_name: &str) -> String {
     if config.image.prebuilt {
         return generate_prebuilt(config);
@@ -17,6 +13,10 @@ fn generate_prebuilt(config: &Config) -> String {
 
     lines.push(format!("FROM {}", config.image.base));
     lines.push(String::new());
+
+    lines.extend(generate_package_install_lines(config));
+    lines.extend(generate_package_remove_lines(config));
+    lines.extend(generate_run_command_lines(config));
 
     lines.push(format!(
         "ENV PODMGR_CONTAINER={}",
@@ -39,9 +39,35 @@ fn generate_custom(config: &Config) -> String {
     lines.push(format!("FROM {}", config.image.base));
     lines.push(String::new());
 
-    let manager = config.image.packages.manager.as_str();
+    lines.extend(generate_package_install_lines(config));
+    lines.extend(generate_package_remove_lines(config));
+    lines.extend(generate_run_command_lines(config));
 
-    // Packages
+    // Integration layer
+    lines.push("COPY podmgr-guest /usr/local/bin/podmgr-guest".into());
+    lines.push(
+        "RUN chmod +x /usr/local/bin/podmgr-guest".into(),
+    );
+    lines.push(String::new());
+
+    lines.push(format!(
+        "ENV PODMGR_CONTAINER={}",
+        config.container.name
+    ));
+    lines.push(String::new());
+
+    lines.push("ENTRYPOINT [\"/usr/local/bin/podmgr-guest\", \"--entry\"]".into());
+    lines.push(format!(
+        "CMD [\"{}\"]",
+        config.container.shell
+    ));
+
+    lines.join("\n")
+}
+
+fn generate_package_install_lines(config: &Config) -> Vec<String> {
+    let mut lines = Vec::new();
+    let manager = config.image.packages.manager.as_str();
     if !config.image.packages.install.is_empty() {
         let pkgs = config.image.packages.install.join(" ");
         let cmd = match manager {
@@ -53,7 +79,12 @@ fn generate_custom(config: &Config) -> String {
         lines.push(format!("RUN {}", cmd));
         lines.push(String::new());
     }
+    lines
+}
 
+fn generate_package_remove_lines(config: &Config) -> Vec<String> {
+    let mut lines = Vec::new();
+    let manager = config.image.packages.manager.as_str();
     if !config.image.packages.remove.is_empty() {
         let pkgs = config.image.packages.remove.join(" ");
         let cmd = match manager {
@@ -65,35 +96,16 @@ fn generate_custom(config: &Config) -> String {
         lines.push(format!("RUN {}", cmd));
         lines.push(String::new());
     }
+    lines
+}
 
-    // Custom RUN steps
+fn generate_run_command_lines(config: &Config) -> Vec<String> {
+    let mut lines = Vec::new();
     for cmd in &config.image.run.commands {
         lines.push(format!("RUN {}", cmd));
     }
     if !config.image.run.commands.is_empty() {
         lines.push(String::new());
     }
-
-    // Integration layer
-    lines.push("COPY podmgr-guest /usr/local/bin/podmgr-guest".into());
-    lines.push(
-        "RUN chmod +x /usr/local/bin/podmgr-guest".into(),
-    );
-    lines.push(String::new());
-
-    // Container name env
-    lines.push(format!(
-        "ENV PODMGR_CONTAINER={}",
-        config.container.name
-    ));
-    lines.push(String::new());
-
-    // ENTRYPOINT and CMD
-    lines.push("ENTRYPOINT [\"/usr/local/bin/podmgr-guest\", \"--entry\"]".into());
-    lines.push(format!(
-        "CMD [\"{}\"]",
-        config.container.shell
-    ));
-
-    lines.join("\n")
+    lines
 }
