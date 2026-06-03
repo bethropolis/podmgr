@@ -951,7 +951,7 @@ dependencies = [
 
 [[package]]
 name = "podbox"
-version = "0.2.13"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -974,7 +974,7 @@ dependencies = [
 
 [[package]]
 name = "podbox-guest"
-version = "0.2.13"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "nix",

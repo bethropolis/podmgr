@@ -23,12 +23,8 @@
 # 1. Install via pre-built binary
 curl -fsSL https://raw.githubusercontent.com/bethropolis/podbox/main/scripts/install-online.sh | sh
 
-# 2. Build and register an environment
-podbox create cachy
-
-# 3. Jump in or run apps
-podbox shell
-podbox run firefox
+podbox create fedora    # pulls, builds, enables, starts
+podbox shell            # you're in
 ```
 
 Also available from source: `git clone https://github.com/bethropolis/podbox && cd podbox && scripts/install.sh`.
@@ -55,10 +51,7 @@ A single TOML definition is your single source of truth. `podbox build` processe
   </picture>
 </p>
 
-- **systemd lifecycle** — Translates config into `.container`, `.socket`, and `.build` Quadlet units under `~/.config/containers/systemd/`.
-- **Guest binary** — A static `podbox-guest` inside the container handles IPC, URI opening, notifications, and clipboard over UNIX sockets.
-- **Security isolation** — Only declared host resources (Wayland, PipeWire, XDG dirs) are mounted into the container.
-
+---
 ## Configuration
 
 Config files are loaded from `~/.config/podbox/<name>.toml`, a local `./.podbox.toml`, or built-in profiles. See [the config reference](docs/config.md) for all keys.
@@ -104,34 +97,26 @@ talk = ["org.freedesktop.Notifications"]
 
 ## Usage
 
+**First container:**
 ```bash
-# Interactive setup
-podbox init -i                           # guided config generator
+podbox create cachy                 # Arch-based, gaming-ready
+podbox create fedora --name dev     # Fedora, custom name
+podbox create ghcr.io/user/img      # any OCI image
+```
 
-# Create containers
-podbox create cachy                      # Arch-based CachyOS
-podbox create fedora --name dev          # custom name
-podbox create ghcr.io/user/img           # any image
+**Run things:**
 
-# Run GUI apps
-podbox run firefox                       # detached, Wayland/GPU/audio
-podbox exec -- htop                      # interactive command
-podbox shell                             # drop into a shell
+```bash
+podbox shell                        # interactive shell
+podbox exec -- htop                 # run a command
+podbox run firefox                  # GUI app, detached
+```
 
-# Export to launcher
-podbox export app firefox                # desktop entry
-podbox export bin firefox                # terminal shim
+**Export to your host:**
 
-# Customize and rebuild
-# Edit ~/.config/podbox/cachy.toml, then:
-podbox build --rebuild
-
-# Diagnostics
-podbox doctor
-podbox doctor --fix
-
-# Tear down
-podbox stop && podbox remove --all
+```bash
+podbox export app firefox           # "Firefox (cachy)" in your launcher
+podbox export bin rg                # ripgrep available in any terminal
 ```
 
 ## Install
@@ -149,7 +134,7 @@ scripts/install.sh                       # ~/.local/bin
 scripts/install.sh --system              # /usr/local (sudo)
 ```
 
-Supports `linux/amd64`. Uninstall with `scripts/uninstall.sh`.
+Supports `linux/x86_64`. Uninstall with `scripts/uninstall.sh`.
 
 ## Requirements
 

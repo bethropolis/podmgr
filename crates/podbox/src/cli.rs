@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "podbox")]
-#[command(version = env!("CARGO_PKG_VERSION"))]
+#[command(version = env!("PODBOX_VERSION"))]
 #[command(about = "Podman-native container environment manager")]
 pub struct Cli {
     /// Path to the definition TOML file.
