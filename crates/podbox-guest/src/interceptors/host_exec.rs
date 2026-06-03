@@ -26,18 +26,15 @@ pub fn run(args: &[String]) {
     write_frame(&mut stream, &msg).unwrap();
 
     let mut exit_code = 0i32;
-    loop {
-        match read_frame(&mut stream) {
-            Ok(Some(bytes)) => match serde_json::from_slice::<HostMessage>(&bytes) {
-                Ok(HostMessage::HostExecStdout { data }) => print!("{}", data),
-                Ok(HostMessage::HostExecStderr { data }) => eprint!("{}", data),
-                Ok(HostMessage::HostExecDone { exit_code: code }) => {
-                    exit_code = code;
-                    break;
-                }
-                Ok(HostMessage::Shutdown) => break,
-                _ => break,
-            },
+    while let Ok(Some(bytes)) = read_frame(&mut stream) {
+        match serde_json::from_slice::<HostMessage>(&bytes) {
+            Ok(HostMessage::HostExecStdout { data }) => print!("{}", data),
+            Ok(HostMessage::HostExecStderr { data }) => eprint!("{}", data),
+            Ok(HostMessage::HostExecDone { exit_code: code }) => {
+                exit_code = code;
+                break;
+            }
+            Ok(HostMessage::Shutdown) => break,
             _ => break,
         }
     }
