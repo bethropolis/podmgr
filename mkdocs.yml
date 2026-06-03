@@ -8,8 +8,8 @@ edit_uri: edit/main/docs/
 
 theme:
   name: material
-  logo: images/podbox-logo.svg
-  favicon: images/podbox-logo.svg
+  logo: assets/podbox-logo.svg
+  favicon: assets/podbox-logo.svg
   palette:
     - scheme: catppuccin-mocha
       toggle:

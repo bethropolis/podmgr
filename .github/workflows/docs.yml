@@ -40,7 +40,6 @@ jobs:
 
       - run: |
           cp README.md docs/index.md
-          cp -r images docs/images
           mkdocs build
 
       - name: Copy install script and assets
