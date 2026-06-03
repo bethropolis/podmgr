@@ -40,7 +40,15 @@ jobs:
       - run: |
           cp README.md docs/index.md
           sed -i 's|docs/assets/|assets/|g' docs/index.md
+          sed -i 's|docs/\([a-z-]*\)\.md|\1/|g' docs/index.md
           mkdocs build
+
+      - name: Fix asset paths in subdirectory pages
+        run: |
+          for dir in architecture config export guest dbus-proxy quadlet protocol; do
+            [ -d "site/$dir" ] && find "site/$dir" -name '*.html' -exec \
+              sed -i 's|"assets/|"../assets/|g' {} +
+          done
 
       - name: Copy install script and assets
         run: |

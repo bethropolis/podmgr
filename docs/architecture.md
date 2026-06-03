@@ -9,8 +9,8 @@ manually.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/assets/how_it_works.svg">
-    <img src="/assets/how_it_works.svg" alt="How podbox Works" width="100%" style="max-width: 820px;">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/how_it_works.svg">
+    <img src="assets/how_it_works.svg" alt="How podbox Works" width="100%" style="max-width: 820px;">
   </picture>
 </p>
 
@@ -22,8 +22,8 @@ separate.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/assets/codegen_pipeline.svg">
-    <img src="/assets/codegen_pipeline.svg" alt="Codegen Pipeline" width="100%" style="max-width: 820px;">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/codegen_pipeline.svg">
+    <img src="assets/codegen_pipeline.svg" alt="Codegen Pipeline" width="100%" style="max-width: 820px;">
   </picture>
 </p>
 
@@ -111,8 +111,8 @@ for the wire format).
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/assets/socket_protocol.svg">
-    <img src="/assets/socket_protocol.svg" alt="Host-Guest Socket Protocol" width="100%" style="max-width: 820px;">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/socket_protocol.svg">
+    <img src="assets/socket_protocol.svg" alt="Host-Guest Socket Protocol" width="100%" style="max-width: 820px;">
   </picture>
 </p>
 
@@ -154,8 +154,8 @@ through the idmapped mount.
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="/assets/runtime_flow.svg">
-    <img src="/assets/runtime_flow.svg" alt="Runtime Flow Sequence" width="100%" style="max-width: 820px;">
+    <source media="(prefers-color-scheme: dark)" srcset="assets/runtime_flow.svg">
+    <img src="assets/runtime_flow.svg" alt="Runtime Flow Sequence" width="100%" style="max-width: 820px;">
   </picture>
 </p>
 
