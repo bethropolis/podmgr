@@ -1,12 +1,15 @@
 site_name: podbox
 site_url: https://bethropolis.github.io/podbox/
 site_description: Podman containers the way they should work — isolated, integrated, and yours.
+site_author: bethropolis
 repo_url: https://github.com/bethropolis/podbox
 repo_name: bethropolis/podbox
 edit_uri: edit/main/docs/
 
 theme:
   name: material
+  logo: images/podbox-logo.svg
+  favicon: images/podbox-logo.svg
   palette:
     - scheme: catppuccin-mocha
       toggle:
@@ -42,6 +45,7 @@ plugins:
   - git-revision-date-localized:
       enable_creation_date: true
       type: timeago
+  - social
 
 markdown_extensions:
   - pymdownx.highlight:
@@ -53,3 +57,4 @@ markdown_extensions:
   - attr_list
   - toc:
       permalink: true
+

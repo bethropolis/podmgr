@@ -36,7 +36,7 @@ jobs:
         with:
           python-version: '3.x'
 
-      - run: pip install mkdocs-material mkdocs-git-revision-date-localized-plugin
+      - run: pip install mkdocs-material mkdocs-git-revision-date-localized-plugin pillow cairosvg
 
       - run: |
           cp README.md docs/index.md

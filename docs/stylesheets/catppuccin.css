@@ -110,31 +110,3 @@
 .md-header {
   display: none;
 }
-
-/* Hide left sidebar */
-.md-sidebar--primary {
-  display: none;
-}
-
-/* Center content and keep right sidebar */
-.md-content {
-  max-width: 720px;
-  margin: 0 auto;
-}
-
-.md-main__inner {
-  display: flex;
-  justify-content: center;
-  gap: 2rem;
-}
-
-.md-sidebar--secondary {
-  width: 200px;
-  flex-shrink: 0;
-  padding-top: 1.5rem;
-}
-
-/* Remove the site title from the navigation */
-.md-nav__title {
-  display: none;
-}
