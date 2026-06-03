@@ -37,8 +37,12 @@ pub struct ImageConfig {
     pub run: RunConfig,
 }
 
-fn default_pull_retry() -> u32 { 3 }
-fn default_pull_retry_delay() -> String { "5s".into() }
+fn default_pull_retry() -> u32 {
+    3
+}
+fn default_pull_retry_delay() -> String {
+    "5s".into()
+}
 
 fn default_prebuilt_registry() -> String {
     "ghcr.io".into()

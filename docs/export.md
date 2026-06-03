@@ -1,8 +1,6 @@
 # Desktop Integration (Export)
 
-`podbox` can expose applications and binaries from inside the container to
-the host desktop — generating `.desktop` files, extracting icons, and
-creating shell shims.
+`podbox` can expose applications and binaries from inside the container to the host desktop — generating `.desktop` files, extracting icons, and creating shell shims.
 
 ---
 
@@ -13,8 +11,7 @@ creating shell shims.
 | `podbox export app <name>` | Export a `.desktop` application |
 | `podbox export bin <name>` | Create a binary shim in `~/.local/bin` |
 
-Applications and binaries are declared in the config under
-`[integration.export]`:
+Applications and binaries are declared in the config under `[integration.export]`:
 
 ```toml
 [integration.export]
@@ -24,66 +21,70 @@ bins = ["rg", "gcc"]
 
 ---
 
-## App Export (`podbox export app`)
+## App Export
 
-### What it does
+`podbox export app` extracts a desktop application from the container and makes it launchable from the host.
 
-1. **Reads the `.desktop` file** from the container at
-   `/usr/share/applications/<name>.desktop` via `podman exec`.
+### Step-by-step
 
-2. **Rewrites the `Exec=` line** so that launching the desktop entry runs
-   through `podbox exec` inside the container:
+1. **Read the `.desktop` file** from the container at `/usr/share/applications/<name>.desktop` via `podman exec`.
 
-   ```
-   Exec=gedit %F
-   ```
-   becomes:
-   ```
-   Exec=podbox --container myenv exec -- gedit %F
-   ```
+2. **Rewrite the `Exec=` line** so launching the desktop entry runs through `podbox exec` inside the container:
 
-   All other keys (`Name=`, `Icon=`, `MimeType=`, etc.) are preserved
-   unchanged.
+    ```ini
+    Exec=gedit %F
+    ```
+    becomes:
+    ```
+    Exec=podbox --container myenv exec -- gedit %F
+    ```
 
-3. **Extracts the icon** by trying common paths inside the container:
-   ```
-   /usr/share/icons/hicolor/{48,64,128,256}x{48,64,128,256}/apps/<name>.png
-   /usr/share/icons/hicolor/scalable/apps/<name>.svg
-   ```
-   The first match is copied to:
-   ```
-   ~/.local/share/icons/podbox/<container>/<name>.<ext>
-   ```
+    All other keys (`Name=`, `Icon=`, `MimeType=`, etc.) are preserved unchanged.
 
-4. **Writes the `.desktop` file** to:
-   ```
-   ~/.local/share/applications/podbox-<container>-<name>.desktop
-   ```
+3. **Extract the icon** by trying common paths inside the container:
 
-5. **Runs `update-desktop-database`** on the applications directory
-   (failure is non-fatal; a warning is printed).
+    ```
+    /usr/share/icons/hicolor/{48,64,128,256}x{48,64,128,256}/apps/<name>.png
+    /usr/share/icons/hicolor/scalable/apps/<name>.svg
+    ```
+
+    The first match is copied to:
+
+    ```
+    ~/.local/share/icons/podbox/<container>/<name>.<ext>
+    ```
+
+4. **Write the `.desktop` file** to:
+
+    ```
+    ~/.local/share/applications/podbox-<container>-<name>.desktop
+    ```
+
+5. **Run `update-desktop-database`** on the applications directory (failure is non-fatal; a warning is printed).
 
 ### MIME type handling
 
-`MimeType=` lines in the original `.desktop` file are preserved as-is.
-The host desktop environment registers the container app as a handler
-for those MIME types. When a user opens a file of that type, the
-rewritten `Exec=` line dispatches through `podbox exec`.
+`MimeType=` lines in the original `.desktop` file are preserved as-is. The host desktop environment registers the container app as a handler for those MIME types. When a user opens a file of that type, the rewritten `Exec=` line dispatches through `podbox exec`.
+
+!!! info ""
+    MIME registration is handled entirely by the host desktop environment via the standard `.desktop` file mechanism — no additional configuration is needed.
 
 ---
 
-## Binary Export (`podbox export bin`)
+## Binary Export
 
-Creates a shell shim in `~/.local/bin/<name>`:
+`podbox export bin` creates a shell shim so a container binary appears on the host `PATH`.
+
+### Generated shim
+
+A script is written to `~/.local/bin/<name>`:
 
 ```sh
 #!/bin/sh
 exec podbox --container "<name>" exec -- "<bin>" "$@"
 ```
 
-The shim is executable (`chmod 755`). If `~/.local/bin` is on the user's
-`PATH` (which most distributions add by default), the binary appears as
-if installed locally.
+The shim is executable (`chmod 755`). If `~/.local/bin` is on the user's `PATH` — which most distributions add by default — the binary appears as if installed locally.
 
 ---
 
@@ -96,10 +97,10 @@ podbox::export::unexport_all(container_name)
 ```
 
 This removes:
+
 - All `~/.local/share/applications/podbox-<container>-*.desktop` files
-- `~/.local/share/icons/podbox/<container>/` directory tree
+- The `~/.local/share/icons/podbox/<container>/` directory tree
 - Any shims in `~/.local/bin/` whose content references the container name
 
-Note: `podbox remove` does **not** automatically call unexport. Run
-`podbox export` commands or call `unexport_all` separately before
-removing the container.
+!!! warning ""
+    `podbox remove` does **not** automatically call unexport. Run `podbox export` commands or call `unexport_all` separately before removing the container.

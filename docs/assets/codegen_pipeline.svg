@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 475" width="100%" height="auto">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#d946ef"/>
+    </linearGradient>
+  </defs>
+  <style>
+    :root {
+      --bg-canvas: #ffffff;
+      --bg-box: #f8fafc;
+      --border-box: #cbd5e1;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --line: #94a3b8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-canvas: #0d1117;
+        --bg-box: #161b22;
+        --border-box: #30363d;
+        --text-main: #c9d1d9;
+        --text-sub: #8b949e;
+        --line: #484f58;
+      }
+    }
+    
+    .box-bg { fill: var(--bg-box); stroke: var(--border-box); stroke-width: 1.5px; }
+    .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: var(--text-main); text-anchor: middle; }
+    .text-desc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; fill: var(--text-sub); text-anchor: middle; }
+    .text-phase { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 10px; font-weight: 700; fill: var(--text-sub); letter-spacing: 1px; }
+    .conn-line { fill: none; stroke: var(--line); stroke-width: 2px; }
+    .accent-gradient-1 { fill: url(#grad1); stroke: #334155; stroke-width: 1px; }
+    .accent-gradient-2 { fill: url(#grad2); stroke: #334155; stroke-width: 1px; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--line)"/>
+    </marker>
+  </defs>
+  <!-- Left: Config Struct Source -->
+  <g transform="translate(30, 40)">
+    <rect class="box-bg" width="160" height="285" rx="8"/>
+    <text class="text-title" x="80" y="130">Config Struct</text>
+    <text class="text-desc" x="80" y="148">Parsed TOML</text>
+    <text class="text-desc" x="80" y="162">Settings</text>
+  </g>
+  <!-- Center: Generator Pure Functions -->
+  <g transform="translate(230, 40)">
+    <rect class="accent-gradient-1" width="380" height="45" rx="6"/>
+    <text class="text-title" x="190" y="26" fill="#ffffff">codegen::containerfile::generate()</text>
+  </g>
+  <g transform="translate(230, 100)">
+    <rect class="accent-gradient-1" width="380" height="45" rx="6"/>
+    <text class="text-title" x="190" y="26" fill="#ffffff">codegen::quadlet::generate_build()</text>
+  </g>
+  <g transform="translate(230, 160)">
+    <rect class="accent-gradient-1" width="380" height="45" rx="6"/>
+    <text class="text-title" x="190" y="26" fill="#ffffff">codegen::quadlet::generate_socket()</text>
+  </g>
+  <g transform="translate(230, 220)">
+    <rect class="accent-gradient-1" width="380" height="45" rx="6"/>
+    <text class="text-title" x="190" y="26" fill="#ffffff">codegen::quadlet::generate_container()</text>
+  </g>
+  <g transform="translate(230, 280)">
+    <rect class="accent-gradient-1" width="380" height="45" rx="6"/>
+    <text class="text-title" x="190" y="26" fill="#ffffff">lock::write()</text>
+  </g>
+  <!-- Right: Generated Output Buffers -->
+  <g transform="translate(650, 40)">
+    <rect class="box-bg" width="140" height="45" rx="6"/>
+    <text class="text-title" x="70" y="26">Containerfile</text>
+  </g>
+  <g transform="translate(650, 100)">
+    <rect class="box-bg" width="140" height="45" rx="6"/>
+    <text class="text-title" x="70" y="26">.build Unit</text>
+  </g>
+  <g transform="translate(650, 160)">
+    <rect class="box-bg" width="140" height="45" rx="6"/>
+    <text class="text-title" x="70" y="26">.socket Unit</text>
+  </g>
+  <g transform="translate(650, 220)">
+    <rect class="box-bg" width="140" height="45" rx="6"/>
+    <text class="text-title" x="70" y="26">.container Unit</text>
+  </g>
+  <g transform="translate(650, 280)">
+    <rect class="box-bg" width="140" height="45" rx="6"/>
+    <text class="text-title" x="70" y="26">LockFile Struct</text>
+  </g>
+  <!-- Phase Separator Line -->
+  <line x1="30" y1="355" x2="790" y2="355" stroke="var(--border-box)" stroke-width="1.5" stroke-dasharray="6,6"/>
+  <text class="text-phase" x="30" y="348" text-anchor="start">PURE FUNCTION STAGE (NO DISK I/O)</text>
+  <text class="text-phase" x="30" y="373" text-anchor="start">ORCHESTRATION &amp; STORAGE STAGE (DISK I/O &amp; BUILDS)</text>
+  <!-- Bottom: Disk I/O & Orchestration Blocks -->
+  <g transform="translate(30, 390)">
+    <rect class="box-bg" width="165" height="60" rx="8"/>
+    <text class="text-title" x="82.5" y="28">1. Write Context</text>
+    <text class="text-desc" x="82.5" y="44">Writes to Context Dir</text>
+  </g>
+  <g transform="translate(225, 390)">
+    <rect class="box-bg" width="165" height="60" rx="8"/>
+    <text class="text-title" x="82.5" y="28">2. Inject Guest</text>
+    <text class="text-desc" x="82.5" y="44">Copies static binary</text>
+  </g>
+  <g transform="translate(420, 390)">
+    <rect class="box-bg" width="165" height="60" rx="8"/>
+    <text class="text-title" x="82.5" y="28">3. podman build</text>
+    <text class="text-desc" x="82.5" y="44">Compiles OCI layers</text>
+  </g>
+  <g transform="translate(615, 390)">
+    <rect class="box-bg" width="175" height="60" rx="8"/>
+    <text class="text-title" x="87.5" y="28">4. Write Lockfile</text>
+    <text class="text-desc" x="87.5" y="44">Registers checksum</text>
+  </g>
+  <!-- Input to Generators -->
+  <path class="conn-line" d="M 190 62 L 222 62" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 190 122 L 222 122" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 190 182 L 222 182" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 190 242 L 222 242" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 190 302 L 222 302" marker-end="url(#arrow)"/>
+  <!-- Generators to Outputs -->
+  <path class="conn-line" d="M 610 62 L 642 62" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 610 122 L 642 122" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 610 182 L 642 182" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 610 242 L 642 242" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 610 302 L 642 302" marker-end="url(#arrow)"/>
+  <!-- I/O Steps -->
+  <path class="conn-line" d="M 195 420 L 217 420" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 390 420 L 412 420" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 585 420 L 607 420" marker-end="url(#arrow)"/>
+</svg>

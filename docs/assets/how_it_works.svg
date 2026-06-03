@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 680" width="100%" height="auto">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#d946ef"/>
+    </linearGradient>
+  </defs>
+  <style>
+    :root {
+      --bg-canvas: #ffffff;
+      --bg-box: #f8fafc;
+      --border-box: #cbd5e1;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --line: #94a3b8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-canvas: #0d1117;
+        --bg-box: #161b22;
+        --border-box: #30363d;
+        --text-main: #c9d1d9;
+        --text-sub: #8b949e;
+        --line: #484f58;
+      }
+    }
+    
+    .box-bg { fill: var(--bg-box); stroke: var(--border-box); stroke-width: 1.5px; }
+    .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: var(--text-main); text-anchor: middle; }
+    .text-desc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; fill: var(--text-sub); text-anchor: middle; }
+    .conn-line { fill: none; stroke: var(--line); stroke-width: 2px; }
+    .accent-gradient-1 { fill: url(#grad1); stroke: #334155; stroke-width: 1px; }
+    .accent-gradient-2 { fill: url(#grad2); stroke: #334155; stroke-width: 1px; }
+  </style>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="var(--line)"/>
+    </marker>
+  </defs>
+  <!-- Definition File -->
+  <g transform="translate(335, 20)">
+    <rect class="accent-gradient-1" width="150" height="60" rx="8"/>
+    <text class="text-title" x="75" y="28" fill="#ffffff">myenv.toml</text>
+    <text class="text-desc" x="75" y="44" fill="#ffffff" opacity="0.85">Definition File</text>
+  </g>
+  <!-- Left: Containerfile -->
+  <g transform="translate(130, 130)">
+    <rect class="box-bg" width="180" height="80" rx="8"/>
+    <text class="text-title" x="90" y="36">Containerfile</text>
+    <text class="text-desc" x="90" y="54">Generated Context File</text>
+  </g>
+  <!-- Right: Quadlet Files -->
+  <g transform="translate(510, 130)">
+    <rect class="box-bg" width="180" height="80" rx="8"/>
+    <text class="text-title" x="90" y="30">Quadlet Files</text>
+    <text class="text-desc" x="90" y="48">.build, .socket</text>
+    <text class="text-desc" x="90" y="62">and .container units</text>
+  </g>
+  <!-- Left Action: Build -->
+  <g transform="translate(130, 250)">
+    <rect class="box-bg" width="180" height="60" rx="8"/>
+    <text class="text-title" x="90" y="28">podman build</text>
+    <text class="text-desc" x="90" y="44">Compiles Base Layers</text>
+  </g>
+  <!-- Right Action: Enable -->
+  <g transform="translate(510, 250)">
+    <rect class="box-bg" width="180" height="60" rx="8"/>
+    <text class="text-title" x="90" y="28">podbox enable</text>
+    <text class="text-desc" x="90" y="44">Installs systemd Quadlets</text>
+  </g>
+  <!-- Left Output: Built Image -->
+  <g transform="translate(130, 350)">
+    <rect class="box-bg" width="180" height="60" rx="8"/>
+    <text class="text-title" x="90" y="26">localhost/podbox-myenv</text>
+    <text class="text-desc" x="90" y="42">Target Container Image</text>
+  </g>
+  <!-- Right Output: systemctl triggers -->
+  <g transform="translate(510, 350)">
+    <rect class="box-bg" width="180" height="60" rx="8"/>
+    <text class="text-title" x="90" y="26">systemctl --user reload</text>
+    <text class="text-desc" x="90" y="42">Starts active Quadlet container</text>
+  </g>
+  <!-- Merged execution: catatonit -->
+  <g transform="translate(320, 455)">
+    <rect class="accent-gradient-2" width="180" height="50" rx="8"/>
+    <text class="text-title" x="90" y="24" fill="#ffffff">catatonit (PID 1)</text>
+    <text class="text-desc" x="90" y="38" fill="#ffffff" opacity="0.85">Zombie Reaping Init</text>
+  </g>
+  <!-- Handover: Guest Entry -->
+  <g transform="translate(320, 535)">
+    <rect class="box-bg" width="180" height="50" rx="8"/>
+    <text class="text-title" x="90" y="24">podbox-guest --entry</text>
+    <text class="text-desc" x="90" y="38">Entrypoint Manager</text>
+  </g>
+  <!-- Resulting splits: Daemon & User Shell -->
+  <g transform="translate(130, 615)">
+    <rect class="box-bg" width="240" height="50" rx="8"/>
+    <text class="text-title" x="120" y="24">podbox-guest --daemon</text>
+    <text class="text-desc" x="120" y="38">Establishes Host Communications</text>
+  </g>
+  <g transform="translate(450, 615)">
+    <rect class="box-bg" width="240" height="50" rx="8"/>
+    <text class="text-title" x="120" y="24">Interactive Shell</text>
+    <text class="text-desc" x="120" y="38">bash / fish login session</text>
+  </g>
+  <!-- Connectors -->
+  <path class="conn-line" d="M 410 80 C 410 110, 220 100, 220 122" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 410 80 C 410 110, 600 100, 600 122" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 220 210 L 220 242" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 220 310 L 220 342" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 600 210 L 600 242" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 600 310 L 600 342" marker-end="url(#arrow)"/>
+  <!-- Converging Paths to catatonit -->
+  <path class="conn-line" d="M 220 410 C 220 435, 410 435, 410 447" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 600 410 C 600 435, 410 435, 410 447" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 410 505 L 410 527" marker-end="url(#arrow)"/>
+  <!-- Final Fork splits -->
+  <path class="conn-line" d="M 410 585 C 410 600, 250 600, 250 607" marker-end="url(#arrow)"/>
+  <path class="conn-line" d="M 410 585 C 410 600, 570 600, 570 607" marker-end="url(#arrow)"/>
+</svg>

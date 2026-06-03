@@ -135,10 +135,13 @@ fn handle_connection(stream: &mut UnixStream, config: &IntegrationConfig) -> any
                     let handle = match notif.show() {
                         Ok(h) => h,
                         Err(_) => {
-                            let _ = write_frame(stream, &HostMessage::NotifyActionResult {
-                                notification_id: 0,
-                                action_key: String::new(),
-                            });
+                            let _ = write_frame(
+                                stream,
+                                &HostMessage::NotifyActionResult {
+                                    notification_id: 0,
+                                    action_key: String::new(),
+                                },
+                            );
                             return Ok(());
                         }
                     };
@@ -146,10 +149,13 @@ fn handle_connection(stream: &mut UnixStream, config: &IntegrationConfig) -> any
                     handle.wait_for_action(|action| {
                         chosen_key = action.to_string();
                     });
-                    let _ = write_frame(stream, &HostMessage::NotifyActionResult {
-                        notification_id: 0,
-                        action_key: chosen_key,
-                    });
+                    let _ = write_frame(
+                        stream,
+                        &HostMessage::NotifyActionResult {
+                            notification_id: 0,
+                            action_key: chosen_key,
+                        },
+                    );
                 }
             }
             GuestMessage::XdgOpen { uri } => {
@@ -194,22 +200,31 @@ fn handle_connection(stream: &mut UnixStream, config: &IntegrationConfig) -> any
                     Ok(child) => {
                         let output = child.wait_with_output()?;
                         if !output.stdout.is_empty() {
-                            write_frame(stream, &HostMessage::HostExecStdout {
-                                data: String::from_utf8_lossy(&output.stdout).to_string(),
-                            })?;
+                            write_frame(
+                                stream,
+                                &HostMessage::HostExecStdout {
+                                    data: String::from_utf8_lossy(&output.stdout).to_string(),
+                                },
+                            )?;
                         }
                         if !output.stderr.is_empty() {
-                            write_frame(stream, &HostMessage::HostExecStderr {
-                                data: String::from_utf8_lossy(&output.stderr).to_string(),
-                            })?;
+                            write_frame(
+                                stream,
+                                &HostMessage::HostExecStderr {
+                                    data: String::from_utf8_lossy(&output.stderr).to_string(),
+                                },
+                            )?;
                         }
                         let code = output.status.code().unwrap_or(1);
                         write_frame(stream, &HostMessage::HostExecDone { exit_code: code })?;
                     }
                     Err(e) => {
-                        write_frame(stream, &HostMessage::HostExecStderr {
-                            data: format!("host-exec: failed to execute '{}': {}", cmd, e),
-                        })?;
+                        write_frame(
+                            stream,
+                            &HostMessage::HostExecStderr {
+                                data: format!("host-exec: failed to execute '{}': {}", cmd, e),
+                            },
+                        )?;
                         write_frame(stream, &HostMessage::HostExecDone { exit_code: 1 })?;
                     }
                 }

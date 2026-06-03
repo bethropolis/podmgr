@@ -86,8 +86,7 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         }
         std::fs::write(tmp.join(format!("{}.container", name)), container_content)?;
 
-        let args: Vec<std::ffi::OsString> =
-            vec!["quadlet".into(), "install".into(), tmp.into()];
+        let args: Vec<std::ffi::OsString> = vec!["quadlet".into(), "install".into(), tmp.into()];
         let output = crate::process::run_piped("podman", &args)?;
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

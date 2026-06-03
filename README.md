@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/podbox-logo.svg">
-    <img src="assets/podbox-logo.svg" alt="podbox">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/podbox-logo.svg">
+    <img src="docs/assets/podbox-logo.svg" alt="podbox">
   </picture>
 </p>
 
@@ -46,8 +46,8 @@ A single TOML definition is your single source of truth. `podbox build` processe
 
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="assets/architecture.svg">
-    <img src="assets/architecture.svg" alt="podbox architecture" width="100%" style="max-width: 820px;">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/architecture.svg">
+    <img src="docs/assets/architecture.svg" alt="podbox architecture" width="100%" style="max-width: 820px;">
   </picture>
 </p>
 

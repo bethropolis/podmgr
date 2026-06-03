@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 640" width="100%" height="auto">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="grad2" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#d946ef"/>
+    </linearGradient>
+  </defs>
+  <style>
+    :root {
+      --bg-canvas: #ffffff;
+      --bg-box: #f8fafc;
+      --border-box: #cbd5e1;
+      --text-main: #0f172a;
+      --text-sub: #64748b;
+      --line: #94a3b8;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg-canvas: #0d1117;
+        --bg-box: #161b22;
+        --border-box: #30363d;
+        --text-main: #c9d1d9;
+        --text-sub: #8b949e;
+        --line: #484f58;
+      }
+    }
+    
+    .box-bg { fill: var(--bg-box); stroke: var(--border-box); stroke-width: 1.5px; }
+    .text-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 13px; font-weight: 600; fill: var(--text-main); text-anchor: start; }
+    .text-desc { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; font-size: 11px; fill: var(--text-sub); text-anchor: start; }
+    .conn-line { fill: none; stroke: var(--line); stroke-width: 1.5px; }
+    .conn-line-dashed { fill: none; stroke: var(--line); stroke-width: 2px; stroke-dasharray: 4,4; }
+  </style>
+  <!-- Left: Timeline Track Line -->
+  <line class="conn-line-dashed" x1="80" y1="30" x2="80" y2="610"/>
+  <!-- Milestone Track Indicators (Circles) -->
+  <circle cx="80" cy="50" r="8" fill="url(#grad1)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <circle cx="80" cy="130" r="8" fill="url(#grad1)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <circle cx="80" cy="210" r="8" fill="url(#grad1)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <circle cx="80" cy="290" r="8" fill="url(#grad1)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <circle cx="80" cy="370" r="8" fill="url(#grad1)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <circle cx="80" cy="460" r="8" fill="url(#grad2)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <circle cx="80" cy="565" r="8" fill="url(#grad2)" stroke="var(--bg-canvas)" stroke-width="2"/>
+  <!-- Chronological Cards -->
+  <g transform="translate(120, 25)">
+    <rect class="box-bg" width="670" height="50" rx="8"/>
+    <text class="text-title" x="20" y="22">1. User Login Session Init</text>
+    <text class="text-desc" x="20" y="38">Host login triggers standard systemd user runtime manager instantiation.</text>
+  </g>
+  <g transform="translate(120, 105)">
+    <rect class="box-bg" width="670" height="50" rx="8"/>
+    <text class="text-title" x="20" y="22">2. systemd-user Instantiates Socket Unit</text>
+    <text class="text-desc" x="20" y="38">myenv.socket sets up and listens for guest connections at %t/podbox/myenv.sock.</text>
+  </g>
+  <g transform="translate(120, 185)">
+    <rect class="box-bg" width="670" height="50" rx="8"/>
+    <text class="text-title" x="20" y="22">3. systemd-user Launches myenv.service</text>
+    <text class="text-desc" x="20" y="38">The .container file translates directly to active systemd user processes.</text>
+  </g>
+  <g transform="translate(120, 265)">
+    <rect class="box-bg" width="670" height="55" rx="8"/>
+    <text class="text-title" x="20" y="22">4. Podman Invocation</text>
+    <text class="text-desc" x="20" y="38">The engine mounts standard isolation paths (Wayland displays, volume paths, host-guest sockets).</text>
+  </g>
+  <g transform="translate(120, 345)">
+    <rect class="box-bg" width="670" height="50" rx="8"/>
+    <text class="text-title" x="20" y="22">5. Entrypoint Handover</text>
+    <text class="text-desc" x="20" y="38">catatonit starts up at PID 1 and calls into podbox-guest --entry inside the container sandbox.</text>
+  </g>
+  <g transform="translate(120, 415)">
+    <rect class="box-bg" width="670" height="90" rx="8"/>
+    <text class="text-title" x="20" y="24">6. Guest Execution Split</text>
+    <text class="text-desc" x="20" y="42">The parent process forks a guest daemon connection and replaces its own thread with</text>
+    <text class="text-desc" x="20" y="58">the user shell. The child daemon executes connection setups and installs interceptors.</text>
+  </g>
+  <g transform="translate(120, 525)">
+    <rect class="box-bg" width="670" height="80" rx="8"/>
+    <text class="text-title" x="20" y="24">7. Secure Execution Feedback Loop</text>
+    <text class="text-desc" x="20" y="42">Guest commands are intercepted at `/run/podbox/bin` and securely routed over</text>
+    <text class="text-desc" x="20" y="58">the local socket up to host graphical output structures.</text>
+  </g>
+</svg>

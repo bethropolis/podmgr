@@ -7,32 +7,12 @@ Containerfiles, Quadlet systemd units, lock files, desktop entries — derives
 from this one file. The user never writes a raw Containerfile or systemd unit
 manually.
 
-```
-Definition File (myenv.toml)
-        │
-        ▼  podbox build
-  ┌──────────────────┐     ┌─────────────────────────────────┐
-  │  Containerfile   │     │  Quadlet files                  │
-  │  (generated)     │     │  myenv.build                    │
-  │                  │     │  myenv.socket                   │
-  └──────┬───────────┘     │  myenv.container                │
-         │                 └──────────────┬──────────────────┘
-         ▼                                │
-   podman build                 podbox enable
-         │                                │
-         ▼                                ▼
-  localhost/podbox-myenv:latest    systemctl --user daemon-reload
-         │                         systemctl --user enable --now myenv
-         └──────────────────────────────────┘
-                          │
-                          ▼  container starts
-             catatonit (PID 1, via --init)
-                          │
-                   podbox-guest --entry
-                    ├── fork → podbox-guest --daemon
-                    │          connects to host socket
-                    └── exec → bash / fish (user shell)
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/assets/how_it_works.svg">
+    <img src="/assets/how_it_works.svg" alt="How podbox Works" width="100%" style="max-width: 820px;">
+  </picture>
+</p>
 
 ## Codegen Pipeline
 
@@ -40,27 +20,12 @@ Definition File (myenv.toml)
 data in, string out, no I/O. Orchestration (file writes, podman invocations) is
 separate.
 
-```
-Config struct
-    │
-    ├── codegen::containerfile::generate(config, guest_binary_path) → String
-    │
-    ├── codegen::quadlet::generate_build(config, containerfile_path) → String
-    │
-    ├── codegen::quadlet::generate_socket(config) → String
-    │
-    ├── codegen::quadlet::generate_container(config, host_env, xdg_dirs) → String
-    │       (queries podman_version() internally for SSH agent gating)
-    │
-    └── lock::write(config_checksum, image_digest) → LockFile
-
-Then (I/O phase):
-    write build context to ~/.local/share/podbox/<name>/
-    copy podbox-guest binary into build context
-    podman build -t localhost/podbox-<name>:latest <context-dir>
-    get digest via podman inspect
-    write lock file
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/assets/codegen_pipeline.svg">
+    <img src="/assets/codegen_pipeline.svg" alt="Codegen Pipeline" width="100%" style="max-width: 820px;">
+  </picture>
+</p>
 
 ## Generated Containerfile
 
@@ -144,19 +109,12 @@ The guest daemon connects to a Unix socket on the host to bridge container
 capabilities. Messages are length-prefixed JSON (see [protocol.md](protocol.md)
 for the wire format).
 
-```
-Container process
-    │ runs: notify-send "hello"
-    ▼
-Interceptor symlink → podbox-guest (re-exec)
-    │ connects to local daemon socket
-    │ sends: {"type":"notify","summary":"hello"}
-    ▼
-podbox-guest --daemon (event loop)
-    │ forwards to host socket
-    ▼
-Host socket handler → desktop notification appears
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/assets/socket_protocol.svg">
+    <img src="/assets/socket_protocol.svg" alt="Host-Guest Socket Protocol" width="100%" style="max-width: 820px;">
+  </picture>
+</p>
 
 ## Guest Daemon (podbox-guest)
 
@@ -194,39 +152,12 @@ through the idmapped mount.
 
 ## Runtime Flow (Full Sequence)
 
-```
-LOGIN
-  │
-  ▼
-systemd --user starts myenv.socket
-  creates: /run/user/1000/podbox/myenv.sock
-  │
-  ▼ (autostart=true)
-systemd --user starts myenv.service (from myenv.container)
-  │
-  ▼
-podman run --init --name myenv \
-  -v ~/containers/myenv:/root:Z \
-  -v ~/Documents:/root/Documents:z \
-  -v /run/user/1000/wayland-0:/run/user/1000/wayland-0 \
-  -v /run/user/1000/podbox/myenv.sock:/run/user/1000/podbox/myenv.sock \
-  ... localhost/podbox-myenv:latest
-  │
-  ▼
-catatonit (PID 1) → podbox-guest --entry
-  │
-  ├── fork → podbox-guest --daemon
-  │     ├── connect to host socket
-  │     ├── handshake
-  │     ├── install interceptors
-  │     └── event loop
-  │
-  └── exec → bash (user shell)
-        │
-        │  user runs: notify-send "build done"
-        ▼
-      interceptor → daemon → host socket → notification
-```
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="/assets/runtime_flow.svg">
+    <img src="/assets/runtime_flow.svg" alt="Runtime Flow Sequence" width="100%" style="max-width: 820px;">
+  </picture>
+</p>
 
 ## Project Structure
 
