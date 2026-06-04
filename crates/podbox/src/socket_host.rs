@@ -265,34 +265,80 @@ fn handle_connection(stream: &mut UnixStream, config: &IntegrationConfig) -> any
     }
 }
 
+/// Validate a URI from inside the container, returning a safe-to-open
+/// string (or `None` to refuse).
+///
+/// Allowed schemes are `http`, `https`, and `mailto`. Bare domains are
+/// auto-prefixed with `https://` so a user typing `example.com` works.
 fn validate_uri(uri: &str) -> Option<String> {
-    let allowed_schemes = ["http", "https", "mailto"];
-    let trimmed = uri.trim();
-    if trimmed.starts_with('/') || trimmed.starts_with('.') {
+    let s = uri.trim();
+    if s.is_empty() || s.starts_with('/') || s.starts_with('.') {
         return None;
     }
-    if let Some(idx) = trimmed.find("://") {
-        let scheme = &trimmed[..idx];
-        if allowed_schemes.contains(&scheme) {
-            return Some(trimmed.to_string());
-        }
-        return None;
+
+    // Extract scheme: prefer the explicit "://" form; fall back to the
+    // first colon (covers `mailto:user@host`); otherwise treat as a bare
+    // domain and let the caller wrap it.
+    let scheme = s
+        .split_once("://")
+        .map(|(scheme, _)| scheme)
+        .or_else(|| s.split_once(':').map(|(scheme, _)| scheme));
+
+    match scheme {
+        Some("http") | Some("https") | Some("mailto") => Some(s.to_string()),
+        // Unknown scheme with alphabetic prefix (e.g. "javascript:", "file:") — refuse.
+        Some(scheme) if scheme.chars().all(|c| c.is_alphabetic()) => None,
+        // No real scheme — treat as a bare domain.
+        _ => Some(format!("https://{}", s)),
     }
-    if trimmed.starts_with("mailto:") {
-        return Some(trimmed.to_string());
+}
+
+#[cfg(test)]
+mod tests {
+    use super::validate_uri;
+
+    #[test]
+    fn allows_http_https_mailto() {
+        assert_eq!(
+            validate_uri("https://example.com"),
+            Some("https://example.com".to_string())
+        );
+        assert_eq!(
+            validate_uri("http://example.com"),
+            Some("http://example.com".to_string())
+        );
+        assert_eq!(
+            validate_uri("mailto:user@host"),
+            Some("mailto:user@host".to_string())
+        );
     }
-    if let Some(colon_idx) = trimmed.find(':') {
-        let scheme = &trimmed[..colon_idx];
-        if allowed_schemes.contains(&scheme) {
-            return Some(trimmed.to_string());
-        }
-        if scheme.chars().all(|c| c.is_alphabetic()) {
-            return None;
-        }
+
+    #[test]
+    fn refuses_path_traversal() {
+        assert_eq!(validate_uri("/etc/passwd"), None);
+        assert_eq!(validate_uri("../foo"), None);
+        assert_eq!(validate_uri(""), None);
     }
-    if !trimmed.is_empty() {
-        Some(format!("https://{}", trimmed))
-    } else {
-        None
+
+    #[test]
+    fn refuses_unknown_alphabetic_schemes() {
+        assert_eq!(validate_uri("javascript:alert(1)"), None);
+        assert_eq!(validate_uri("file:///etc/passwd"), None);
+    }
+
+    #[test]
+    fn wraps_bare_domain() {
+        assert_eq!(
+            validate_uri("example.com"),
+            Some("https://example.com".to_string())
+        );
+    }
+
+    #[test]
+    fn trims_whitespace() {
+        assert_eq!(
+            validate_uri("  https://example.com  "),
+            Some("https://example.com".to_string())
+        );
     }
 }
