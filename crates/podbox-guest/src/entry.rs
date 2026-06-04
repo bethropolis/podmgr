@@ -126,16 +126,34 @@ pub fn run(cmd: &[String]) -> ! {
 ///
 /// All operations are idempotent — safe to call on every container start.
 fn setup_user(user: &str, uid: u32, gid: u32) {
+    let home_dir = Path::new("/home").join(user);
+    let passwd = || std::fs::read_to_string("/etc/passwd").unwrap_or_default();
+    let group_file = || std::fs::read_to_string("/etc/group").unwrap_or_default();
+
+    // If a user with the target UID already exists under a different name,
+    // remove it so we can create ours with the correct UID.
+    if let Some(existing) = passwd()
+        .lines()
+        .find(|l| l.split(':').nth(2).map(|u| u == &uid.to_string()).unwrap_or(false))
+        .and_then(|l| l.split(':').next())
+    {
+        if existing != user {
+            let _ = std::process::Command::new("userdel")
+                .arg("-r")
+                .arg(existing)
+                .status();
+        }
+    }
+
     // 1. Group
-    let group_exists = std::fs::read_to_string("/etc/group")
-        .map(|c| c.lines().any(|l| l.starts_with(&format!("{}:", user))))
-        .unwrap_or(false);
+    let group_exists = group_file()
+        .lines()
+        .any(|l| l.starts_with(&format!("{}:", user)));
     if !group_exists {
         let status = std::process::Command::new("groupadd")
             .args(["-g", &gid.to_string(), user])
             .status();
         if status.is_err() || !status.unwrap().success() {
-            // fallback for Alpine/busybox
             let _ = std::process::Command::new("addgroup")
                 .args(["-g", &gid.to_string(), user])
                 .status();
@@ -143,12 +161,18 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
     }
 
     // 2. User
-    let user_exists = std::fs::read_to_string("/etc/passwd")
-        .map(|c| c.lines().any(|l| l.starts_with(&format!("{}:", user))))
-        .unwrap_or(false);
-    let home_dir = Path::new("/home").join(user);
+    let user_exists = passwd()
+        .lines()
+        .any(|l| l.starts_with(&format!("{}:", user)));
 
     if !user_exists {
+        // Detect the best available shell
+        let shell = ["/bin/bash", "/bin/zsh", "/bin/fish", "/bin/sh"]
+            .iter()
+            .find(|s| std::path::Path::new(s).exists())
+            .copied()
+            .unwrap_or("/bin/sh");
+
         let status = std::process::Command::new("useradd")
             .args([
                 "-u",
@@ -158,7 +182,7 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
                 "-d",
                 &home_dir.to_string_lossy(),
                 "-s",
-                "/usr/bin/fish",
+                shell,
                 "-m",
                 user,
             ])
@@ -169,12 +193,10 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
                     "-u",
                     &uid.to_string(),
                     "-D",
-                    "-G",
-                    user,
                     "-h",
                     &home_dir.to_string_lossy(),
                     "-s",
-                    "/usr/bin/fish",
+                    shell,
                     user,
                 ])
                 .status();
@@ -189,10 +211,20 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
         .args(["777", &home_dir.to_string_lossy()])
         .status();
 
-    // 3. Supplementary groups
-    let _ = std::process::Command::new("usermod")
-        .args(["-aG", "wheel,sudo,video,audio,render", user])
-        .status();
+    // 3. Supplementary groups — try common group names portably
+    let supp_groups = [
+        "wheel", "sudo", "video", "audio", "render",
+    ];
+    let existing_groups: Vec<&str> = supp_groups
+        .iter()
+        .filter(|g| group_file().lines().any(|l| l.starts_with(&format!("{}:", g))))
+        .copied()
+        .collect();
+    if !existing_groups.is_empty() {
+        let _ = std::process::Command::new("usermod")
+            .args(["-aG", &existing_groups.join(","), user])
+            .status();
+    }
 
     // 4. Passwordless sudo
     let sudoers_dir = Path::new("/etc/sudoers.d");
@@ -203,7 +235,6 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
     }
 
     // 5. Make runtime directory writable by all
-    //    Needed so glib/dconf/Wayland proxy can create sockets at runtime.
     let runtime_dir =
         std::env::var("XDG_RUNTIME_DIR").unwrap_or_else(|_| format!("/run/user/{}", uid));
     let _ = std::process::Command::new("chmod")
@@ -213,12 +244,9 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
     // 6. dconf subdirectory
     let dconf_dir = Path::new(&runtime_dir).join("dconf");
     let _ = std::fs::create_dir_all(&dconf_dir);
+    let owner = format!("{}:{}", uid, gid);
     let _ = std::process::Command::new("chown")
-        .args([
-            uid.to_string().as_str(),
-            gid.to_string().as_str(),
-            dconf_dir.to_str().unwrap_or_default(),
-        ])
+        .args([&owner, dconf_dir.to_str().unwrap_or_default()])
         .status();
     let _ = std::process::Command::new("chmod")
         .args(["700", &dconf_dir.to_string_lossy()])
