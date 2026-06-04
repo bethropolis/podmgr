@@ -167,7 +167,7 @@ fn event_loop(host_stream: &mut UnixStream) -> Result<(), GuestError> {
                 }
             }
             Err(nix::errno::Errno::EINTR) => continue,
-            Err(e) => return Err(GuestError::IO(std::io::Error::from_raw_os_error(e as i32))),
+            Err(e) => return Err(GuestError::IO(e.into())),
         }
     }
 }
