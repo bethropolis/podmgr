@@ -56,23 +56,28 @@ fn generate_custom(config: &Config) -> String {
 fn generate_package_install_lines(config: &Config) -> Vec<String> {
     let mut lines = Vec::new();
     let manager = config.image.packages.manager.as_str();
-    if !config.image.packages.install.is_empty() {
-        let pkgs = config.image.packages.install.join(" ");
-        let cmd = match manager {
-            "apt" | "apt-get" => format!(
-                "apt-get update && apt-get install -y {} && rm -rf /var/lib/apt/lists/*",
-                pkgs
-            ),
-            "apk" => format!("apk add --no-cache {}", pkgs),
-            "pacman" => format!(
-                "pacman -Syu --noconfirm {} && pacman -Scc --noconfirm",
-                pkgs
-            ),
-            _ => format!("dnf install -y {} && dnf clean all", pkgs),
-        };
-        lines.push(format!("RUN {}", cmd));
-        lines.push(String::new());
+
+    let mut packages = config.image.packages.install.clone();
+    if !packages.contains(&"sudo".into()) {
+        packages.push("sudo".into());
     }
+
+    let pkgs = packages.join(" ");
+    let cmd = match manager {
+        "apt" | "apt-get" => format!(
+            "apt-get update && apt-get install -y {} && rm -rf /var/lib/apt/lists/*",
+            pkgs
+        ),
+        "apk" => format!("apk add --no-cache {}", pkgs),
+        "pacman" => format!(
+            "pacman -Syu --noconfirm {} && pacman -Scc --noconfirm",
+            pkgs
+        ),
+        _ => format!("dnf install -y {} && dnf clean all", pkgs),
+    };
+    lines.push(format!("RUN {}", cmd));
+    lines.push(String::new());
+
     lines
 }
 
