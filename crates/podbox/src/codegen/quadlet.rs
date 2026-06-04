@@ -84,7 +84,7 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         lines.push(format!("Retry={}", config.image.pull_retry));
         lines.push(format!("RetryDelay={}", config.image.pull_retry_delay));
     } else {
-        lines.push(format!("Image=podbox-{}.build", config.image.name));
+        lines.push(format!("Image={}.build", name));
     }
     lines.push(format!("ContainerName={}", name));
     lines.push("UserNS=keep-id".into());
@@ -283,8 +283,9 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         lines.push(String::new());
     }
 
-    // Podman init
+    // Podman init + working directory
     lines.push("PodmanArgs=--init".into());
+    lines.push("PodmanArgs=--workdir=/home/%u".into());
     lines.push(String::new());
 
     // Reload command

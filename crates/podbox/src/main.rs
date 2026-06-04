@@ -67,15 +67,17 @@ fn run() -> Result<()> {
         }
 
         Command::Init {
-            profile,
+            image,
             name,
             interactive,
+            profile,
         } => {
             return run_init(
                 cli.dry_run,
-                profile.as_deref(),
+                image.as_deref(),
                 name.as_deref(),
                 *interactive,
+                profile.as_deref(),
             );
         }
 
@@ -95,7 +97,7 @@ fn run() -> Result<()> {
                         "quadlet",
                         "list",
                         "--format",
-                        "table {{.Name}}\t{{.File}}\t{{.Kind}}\t{{.Service}}",
+                        "table {{.Name}}\t{{.Path}}\t{{.Status}}\t{{.UnitName}}",
                     ])
                     .stdin(std::process::Stdio::inherit())
                     .stdout(std::process::Stdio::inherit())
@@ -157,7 +159,13 @@ fn run() -> Result<()> {
     } else if let Some(ref container_name) = enter_name.or_else(|| cli.container.clone()) {
         let config_dir = config::config_dir();
         let config_path = config_dir.join(format!("{}.toml", container_name));
-        Config::load(&config_path)?
+        Config::load(&config_path).map_err(|e| {
+            anyhow::anyhow!(
+                "{}\n\nHint: Use `--config <PATH>` to specify a config file, or `-C <NAME>` to use a config from {}",
+                e,
+                config_dir.display()
+            )
+        })?
     } else {
         match config::find_definition() {
             Some(path) => Config::load(&path)?,
@@ -193,8 +201,7 @@ fn run() -> Result<()> {
             podbox::quadlet_install::install(&config, &env, &xdg, cli.dry_run)?;
             if !cli.dry_run {
                 println!(
-                    "\nRun `systemctl --user start {}` to start the container.",
-                    name
+                    "\nRun `podbox shell` to start and enter the container.",
                 );
             }
         }
@@ -205,7 +212,7 @@ fn run() -> Result<()> {
 
         Command::Start => {
             if cli.dry_run {
-                println!("systemctl --user start {}", name);
+                println!("podman start {}", name);
                 return Ok(());
             }
 
@@ -226,28 +233,17 @@ fn run() -> Result<()> {
                 podbox::quadlet_install::install(&config, &env, &xdg, false)?;
             }
 
-            if which::which("systemctl").is_ok() {
-                let args: Vec<OsString> =
-                    vec!["--user".into(), "start".into(), name.clone().into()];
-                podbox::process::spawn_interactive("systemctl", &args)?;
-            } else {
-                let args: Vec<OsString> = vec!["start".into(), name.clone().into()];
-                podbox::process::spawn_interactive("podman", &args)?;
-            }
+            let args: Vec<OsString> = vec!["start".into(), name.clone().into()];
+            podbox::process::spawn_interactive("podman", &args)?;
         }
 
         Command::Stop => {
             if cli.dry_run {
-                println!("systemctl --user stop {}", name);
+                println!("podman stop {}", name);
                 return Ok(());
             }
-            if which::which("systemctl").is_ok() {
-                let args: Vec<OsString> = vec!["--user".into(), "stop".into(), name.clone().into()];
-                podbox::process::spawn_interactive("systemctl", &args)?;
-            } else {
-                let args: Vec<OsString> = vec!["stop".into(), name.clone().into()];
-                podbox::process::spawn_interactive("podman", &args)?;
-            }
+            let args: Vec<OsString> = vec!["stop".into(), name.clone().into()];
+            podbox::process::spawn_interactive("podman", &args)?;
         }
 
         Command::Shell | Command::Enter { .. } => {
@@ -257,12 +253,13 @@ fn run() -> Result<()> {
             } else {
                 OsString::from("-i")
             };
+            let home_in_container: OsString = format!("/home/{}", env.username).into();
             if cli.dry_run {
                 let exec_args: Vec<OsString> = vec![
                     "exec".into(),
                     tty_flag,
-                    "-u".into(),
-                    env.username.into(),
+                    "--workdir".into(),
+                    home_in_container.clone(),
                     name.clone().into(),
                     config.container.shell.clone().into(),
                 ];
@@ -273,8 +270,8 @@ fn run() -> Result<()> {
             let exec_args: Vec<OsString> = vec![
                 "exec".into(),
                 tty_flag,
-                "-u".into(),
-                env.username.into(),
+                "--workdir".into(),
+                home_in_container.clone(),
                 name.clone().into(),
                 config.container.shell.clone().into(),
             ];
@@ -283,7 +280,6 @@ fn run() -> Result<()> {
         }
 
         Command::Exec { args: cmd_args } => {
-            let env = podbox::env::resolve()?;
             let tty_flag = if nix::unistd::isatty(0).unwrap_or(false) {
                 OsString::from("-it")
             } else {
@@ -293,8 +289,6 @@ fn run() -> Result<()> {
                 let mut exec_args: Vec<OsString> = vec![
                     "exec".into(),
                     tty_flag.clone(),
-                    "-u".into(),
-                    env.username.clone().into(),
                     name.clone().into(),
                 ];
                 for a in cmd_args {
@@ -307,8 +301,6 @@ fn run() -> Result<()> {
             let mut exec_args: Vec<OsString> = vec![
                 "exec".into(),
                 tty_flag.clone(),
-                "-u".into(),
-                env.username.clone().into(),
                 name.clone().into(),
             ];
             for a in cmd_args {
@@ -319,13 +311,10 @@ fn run() -> Result<()> {
         }
 
         Command::Run { app, app_args } => {
-            let env = podbox::env::resolve()?;
             if cli.dry_run {
                 let mut exec_args: Vec<OsString> = vec![
                     "exec".into(),
                     "-d".into(),
-                    "-u".into(),
-                    env.username.clone().into(),
                     name.clone().into(),
                     app.clone().into(),
                 ];
@@ -339,8 +328,6 @@ fn run() -> Result<()> {
             let mut exec_args: Vec<OsString> = vec![
                 "exec".into(),
                 "-d".into(),
-                "-u".into(),
-                env.username.clone().into(),
                 name.clone().into(),
                 app.clone().into(),
             ];
@@ -556,21 +543,11 @@ fn ensure_running(name: &str, dry_run: bool) -> Result<()> {
         ContainerState::Running => Ok(()),
         ContainerState::Stopped | ContainerState::Missing => {
             if dry_run {
-                if which::which("systemctl").is_ok() {
-                    println!("systemctl --user start {}", name);
-                } else {
-                    println!("podman start {}", name);
-                }
+                println!("podman start {}", name);
                 return Ok(());
             }
-            if which::which("systemctl").is_ok() {
-                let args: Vec<OsString> = vec!["--user".into(), "start".into(), name.into()];
-                podbox::process::spawn_interactive("systemctl", &args)?;
-            } else {
-                let args: Vec<OsString> = vec!["start".into(), name.into()];
-                podbox::process::spawn_interactive("podman", &args)?;
-            }
-            // Verify it's actually running now
+            let args: Vec<OsString> = vec!["start".into(), name.into()];
+            podbox::process::spawn_interactive("podman", &args)?;
             match query_state(name)? {
                 ContainerState::Running => Ok(()),
                 state => Err(anyhow::anyhow!(
@@ -674,9 +651,10 @@ fn translate_path(
 
 fn run_init(
     dry_run: bool,
-    profile: Option<&str>,
+    image: Option<&str>,
     name: Option<&str>,
     interactive: bool,
+    profile: Option<&str>,
 ) -> Result<()> {
     let shell_info = podbox::init_wizard::detect_host_shell();
     if !shell_info.detected && !interactive {
@@ -716,38 +694,72 @@ fn run_init(
         return Ok(());
     }
 
-    let profile = match profile {
-        Some(s) if s.contains('/') || s.contains('\\') => {
-            let path = Path::new(s);
-            let content = std::fs::read_to_string(path)
-                .with_context(|| format!("failed to read profile '{}'", path.display()))?;
-            content
-        }
-        Some(s) => {
-            let found = podbox::profiles::find(s).ok_or_else(|| {
+    // --profile mode: load a named profile (prebuilt)
+    if let Some(p) = profile {
+        let profile_content = if p.contains('/') || p.contains('\\') {
+            let path = Path::new(p);
+            std::fs::read_to_string(path)
+                .with_context(|| format!("failed to read profile '{}'", path.display()))?
+        } else {
+            let found = podbox::profiles::find(p).ok_or_else(|| {
                 let names = podbox::profiles::list_names();
                 anyhow::anyhow!(
                     "Unknown profile '{}'. Available profiles: {}",
-                    s,
+                    p,
                     names.join(", ")
                 )
             })?;
             found.toml
-        }
-        None => {
-            let profiles = podbox::profiles::all();
-            println!("Available profiles:");
-            for p in &profiles {
-                println!("  {}  {}  {}", p.name, p.label, p.description);
-            }
-            anyhow::bail!("No profile specified. Use --profile <name> to select one.");
-        }
-    };
+        };
+        let mut cfg = Config::parse(&profile_content)?;
+        podbox::init_wizard::apply_shell_defaults(&mut cfg, &shell_info);
+        let toml_str = toml::to_string_pretty(&cfg)?;
+        let container_name = name.unwrap_or(&cfg.container.name).to_string();
+        let config_dir = config::config_dir();
+        let config_path = config_dir.join(format!("{}.toml", container_name));
 
-    let mut cfg = Config::parse(&profile)?;
+        if config_path.exists() && !dry_run {
+            anyhow::bail!(
+                "Config already exists at '{}'. Remove it first or use a different name.",
+                config_path.display()
+            );
+        }
+
+        if dry_run {
+            println!("Would create: {}", config_path.display());
+            println!("---\n{}", toml_str);
+            return Ok(());
+        }
+
+        std::fs::create_dir_all(&config_dir)?;
+        std::fs::write(&config_path, &toml_str)?;
+        println!("Created config: {}", config_path.display());
+        println!();
+        println!(
+            "Profile created! Run `podbox create {}` or `podbox start` to spin it up.",
+            container_name
+        );
+        return Ok(());
+    }
+
+    // Non-prebuilt mode: create a custom config from a base image
+    let base = image.unwrap_or("fedora:44");
+    let base_name = base.split(':').next().unwrap_or(base)
+        .split('/').last().unwrap_or(base);
+    let container_name = name.unwrap_or(base_name).to_string();
+
+    let mut cfg = Config::embedded();
+    cfg.image.base = base.to_string();
+    cfg.image.prebuilt = false;
+    cfg.image.name = container_name.clone();
+    cfg.container.name = container_name.clone();
+    cfg.container.home = dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("~"))
+        .join("containers")
+        .join(&container_name);
+
     podbox::init_wizard::apply_shell_defaults(&mut cfg, &shell_info);
-    let profile_with_shell = toml::to_string_pretty(&cfg)?;
-    let container_name = name.unwrap_or(&cfg.container.name).to_string();
+    let toml_str = toml::to_string_pretty(&cfg)?;
     let config_dir = config::config_dir();
     let config_path = config_dir.join(format!("{}.toml", container_name));
 
@@ -760,17 +772,16 @@ fn run_init(
 
     if dry_run {
         println!("Would create: {}", config_path.display());
-        println!("---");
-        println!("{}", profile_with_shell);
+        println!("---\n{}", toml_str);
         return Ok(());
     }
 
     std::fs::create_dir_all(&config_dir)?;
-    std::fs::write(&config_path, &profile_with_shell)?;
+    std::fs::write(&config_path, &toml_str)?;
     println!("Created config: {}", config_path.display());
     println!();
     println!(
-        "Profile created! Run `podbox create {}` or `podbox start` to spin it up.",
+        "Container created! Run `podbox create {}` or `podbox start` to spin it up.",
         container_name
     );
 
@@ -856,24 +867,15 @@ fn run_create(dry_run: bool, image: &str, name: Option<&str>, no_start: bool) ->
         if no_start {
             println!("Container created but not started (--no-start).");
             println!(
-                "Run `podbox start {}` or `systemctl --user start {}` to start it.",
-                container_name, container_name
+                "Run `podbox shell {}` to start and enter it.",
+                container_name
             );
         } else if dry_run {
-            println!("systemctl --user start {}", container_name);
+            println!("podman start {}", container_name);
         } else {
             println!("Starting container...");
-            if which::which("systemctl").is_ok() {
-                let args: Vec<OsString> = vec![
-                    "--user".into(),
-                    "start".into(),
-                    container_name.clone().into(),
-                ];
-                podbox::process::spawn_interactive("systemctl", &args)?;
-            } else {
-                let args: Vec<OsString> = vec!["start".into(), container_name.clone().into()];
-                podbox::process::spawn_interactive("podman", &args)?;
-            }
+            let args: Vec<OsString> = vec!["start".into(), container_name.clone().into()];
+            podbox::process::spawn_interactive("podman", &args)?;
             println!("Container '{}' is running!", container_name);
             println!("Run `podbox shell` to enter.");
         }

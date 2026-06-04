@@ -18,19 +18,39 @@ impl PodmanVersion {
 
 static PODMAN_VERSION: OnceLock<anyhow::Result<PodmanVersion>> = OnceLock::new();
 
+fn parse_version_string(s: &str) -> PodmanVersion {
+    let s = s.trim();
+    // Strip anything after a space (e.g. "5.3.0 (ok)" -> "5.3.0")
+    let s = s.split_whitespace().next().unwrap_or(s);
+    let mut parts = s.splitn(3, '.');
+    PodmanVersion {
+        major: parts.next().and_then(|p| p.parse().ok()).unwrap_or(0),
+        minor: parts.next().and_then(|p| p.parse().ok()).unwrap_or(0),
+        patch: parts.next().and_then(|p| p.parse().ok()).unwrap_or(0),
+    }
+}
+
 pub fn podman_version() -> anyhow::Result<&'static PodmanVersion> {
     let res = PODMAN_VERSION.get_or_init(|| {
-        let output = std::process::Command::new("podman")
-            .args(["--version"])
-            .output()?;
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let version_str = stdout.split_whitespace().last().unwrap_or("");
-        let parts: Vec<&str> = version_str.split('.').collect();
-        Ok(PodmanVersion {
-            major: parts.first().unwrap_or(&"0").parse().unwrap_or(0),
-            minor: parts.get(1).unwrap_or(&"0").parse().unwrap_or(0),
-            patch: parts.get(2).unwrap_or(&"0").parse().unwrap_or(0),
-        })
+        // Prefer structured output from `podman version -f` (more reliable
+        // across distro packaging, e.g. Debian epoch suffixes).
+        let structured = Command::new("podman")
+            .args(["version", "-f", "{{.Client.Version}}"])
+            .output()
+            .ok()
+            .filter(|o| o.status.success());
+        let version_str = match structured {
+            Some(ref output) => {
+                String::from_utf8_lossy(&output.stdout).trim().to_string()
+            }
+            None => {
+                // Fallback: parse `podman --version` (e.g. "podman version 5.3.0")
+                let output = Command::new("podman").args(["--version"]).output()?;
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                stdout.split_whitespace().last().unwrap_or("").to_string()
+            }
+        };
+        Ok(parse_version_string(&version_str))
     });
     res.as_ref().map_err(|e| anyhow::anyhow!("{}", e))
 }

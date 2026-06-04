@@ -154,7 +154,7 @@ fn quadlet_prebuilt_uses_registry_image() {
     };
     let q = quadlet::generate_container(&config, &env, &xdg);
     assert!(q.contains("Image=ghcr.io/bethropolis/podbox:cachy-latest"));
-    assert!(!q.contains("Image=podbox-prebuilt.build"));
+    assert!(!q.contains("Image=prebuilt.build"));
 }
 
 #[test]
@@ -162,31 +162,31 @@ fn quadlet_custom_uses_build_ref() {
     use podbox::codegen::quadlet;
     use podbox::env::HostEnv;
     use podbox::xdg::ResolvedXdgDirs;
-    let config = load_config("full.toml");
+    let cfg = load_config("full.toml");
     let env = HostEnv {
         uid: 1000,
         username: "testuser".into(),
         xdg_runtime_dir: PathBuf::from("/run/user/1000"),
-        wayland_display: None,
-        wayland_socket: None,
-        pipewire_socket: None,
-        pulse_dir: None,
-        dbus_socket: None,
+        wayland_display: Some("wayland-0".into()),
+        wayland_socket: Some(PathBuf::from("/run/user/1000/wayland-0")),
+        pipewire_socket: Some(PathBuf::from("/run/user/1000/pipewire-0")),
+        pulse_dir: Some(PathBuf::from("/run/user/1000/pulse")),
+        dbus_socket: Some(PathBuf::from("/run/user/1000/bus")),
         gpu_has_dri: false,
         gpu_has_nvidia: false,
         gpu_has_nvidia_uvm: false,
     };
     let xdg = ResolvedXdgDirs {
-        documents: None,
-        downloads: None,
+        documents: Some(PathBuf::from("/home/user/Documents")),
+        downloads: Some(PathBuf::from("/home/user/Downloads")),
         pictures: None,
         music: None,
         videos: None,
         desktop: None,
         projects: None,
     };
-    let q = quadlet::generate_container(&config, &env, &xdg);
-    assert!(q.contains("Image=podbox-myenv.build"));
+    let q = quadlet::generate_container(&cfg, &env, &xdg);
+    assert!(q.contains("Image=myenv.build"));
     assert!(!q.contains("Image=ghcr.io"));
 }
 

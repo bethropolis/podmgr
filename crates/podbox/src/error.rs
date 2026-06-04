@@ -42,9 +42,6 @@ pub enum PodboxError {
     #[error("quadlet install failed: {0}")]
     QuadletInstallFailed(String),
 
-    #[error("systemctl not found -- cannot reload systemd")]
-    SystemctlNotFound,
-
     #[error("export failed: {0}")]
     ExportFailed(String),
 

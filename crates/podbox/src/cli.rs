@@ -7,7 +7,7 @@ use std::path::PathBuf;
 #[command(about = "Podman-native container environment manager")]
 pub struct Cli {
     /// Path to the definition TOML file.
-    #[arg(long)]
+    #[arg(long, short)]
     pub config: Option<PathBuf>,
 
     /// Print what would happen without executing.
@@ -15,7 +15,7 @@ pub struct Cli {
     pub dry_run: bool,
 
     /// Container name to use for commands (overrides config file detection)
-    #[arg(long, short, global = true)]
+    #[arg(long, short = 'C', global = true)]
     pub container: Option<String>,
 
     #[command(subcommand)]
@@ -120,16 +120,20 @@ pub enum Command {
     /// List all managed containers.
     List,
 
-    /// Initialize a new container config from a profile.
+    /// Initialize a new container config.
     Init {
-        /// Profile name (cachy, fedora, gaming, or full path).
+        /// Base image reference (e.g. "fedora:44") for a non-prebuilt container.
+        /// If omitted, defaults to "fedora:44".
+        image: Option<String>,
+        /// Container name (defaults to the image name).
         #[arg(long)]
-        profile: Option<String>,
-        /// Container name (defaults to profile name).
         name: Option<String>,
         /// Run an interactive wizard to build the config.
         #[arg(long, short = 'i', conflicts_with = "profile")]
         interactive: bool,
+        /// Use a named profile (cachy, fedora, gaming) as template.
+        #[arg(long)]
+        profile: Option<String>,
     },
 
     /// Pull a prebuilt image without building.

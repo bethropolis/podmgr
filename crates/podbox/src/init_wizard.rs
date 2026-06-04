@@ -114,11 +114,48 @@ pub fn run_wizard(
     profiles: &[profiles::Profile],
     detected_shell: &ShellInfo,
 ) -> anyhow::Result<WizardResult> {
-    let profile = prompt_profile(profiles);
-    let mut config: Config = toml::from_str(&profile.toml)
-        .map_err(|e| anyhow::anyhow!("failed to parse profile '{}': {}", profile.name, e))?;
+    let (mut config, default_name) = match prompt_profile(profiles) {
+        ProfileChoice::Named(profile) => {
+            let cfg: Config = toml::from_str(&profile.toml)
+                .map_err(|e| anyhow::anyhow!("failed to parse profile '{}': {}", profile.name, e))?;
+            (cfg, profile.name.clone())
+        }
+        ProfileChoice::Custom => {
+            let mut cfg = Config::embedded();
+            cfg.image.prebuilt = false;
 
-    let name = prompt_name(&profile.name, &crate::config::config_dir())?;
+            let base: String = dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                .with_prompt("Base image")
+                .default("fedora:44".to_string())
+                .interact_text()?;
+            cfg.image.base = base;
+
+            let packages: String = dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                .with_prompt("Packages to install (space-separated)")
+                .default("fish fastfetch btop".to_string())
+                .interact_text()?;
+            cfg.image.packages.install = packages
+                .split_whitespace()
+                .map(|s| s.to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            let run_cmds: String = dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                .with_prompt("Extra RUN commands (one per line, \\n separated)")
+                .default("".to_string())
+                .interact_text()?;
+            cfg.image.run.commands = run_cmds
+                .split("\\n")
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect();
+
+            let default_name = cfg.container.name.clone();
+            (cfg, default_name)
+        }
+    };
+
+    let name = prompt_name(&default_name, &crate::config::config_dir())?;
 
     let shell = prompt_shell(detected_shell);
     config.container.name = name.clone();
@@ -162,18 +199,30 @@ pub fn run_wizard(
     })
 }
 
-fn prompt_profile(profiles: &[profiles::Profile]) -> &profiles::Profile {
-    let items: Vec<String> = profiles
-        .iter()
-        .map(|p| format!("{}  —  {}", p.label, p.description))
-        .collect();
+enum ProfileChoice<'a> {
+    Custom,
+    Named(&'a profiles::Profile),
+}
+
+fn prompt_profile(profiles: &[profiles::Profile]) -> ProfileChoice<'_> {
+    let items: Vec<String> = {
+        let mut v = vec!["Custom (from scratch)  —  Build a container from a base distro image".into()];
+        for p in profiles {
+            v.push(format!("{}  —  {}", p.label, p.description));
+        }
+        v
+    };
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
-        .with_prompt("Base profile")
+        .with_prompt("Configuration type")
         .items(&items)
         .default(0)
         .interact()
         .expect("failed to get profile selection");
-    &profiles[selection]
+    if selection == 0 {
+        ProfileChoice::Custom
+    } else {
+        ProfileChoice::Named(&profiles[selection - 1])
+    }
 }
 
 fn prompt_name(default: &str, config_dir: &std::path::Path) -> anyhow::Result<String> {

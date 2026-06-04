@@ -102,7 +102,7 @@ fn dry_shell_shows_podman_exec() {
 }
 
 #[test]
-fn dry_stop_shows_systemctl_stop() {
+fn dry_stop_shows_podman_stop() {
     let mut cmd = Command::cargo_bin("podbox").unwrap();
     cmd.args([
         "--config",
@@ -112,5 +112,5 @@ fn dry_stop_shows_systemctl_stop() {
     ]);
     cmd.assert()
         .success()
-        .stdout(predicates::str::contains("systemctl --user stop"));
+        .stdout(predicates::str::contains("podman stop"));
 }
