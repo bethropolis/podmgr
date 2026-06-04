@@ -10,6 +10,29 @@ use crate::error::PodboxError;
 //  ImageConfig
 // ---------------------------------------------------------------------------
 
+/// Distinguishes how `podbox` should obtain the container image.
+///
+/// `Build` produces a new image from a base + Containerfile.
+/// `Prebuilt` consumes a registry-hosted image directly.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImageSource {
+    /// Build a new image: `base` is a `FROM` directive.
+    Build { base: String },
+    /// Pull a prebuilt image: `ref_str` is the full pullable reference
+    /// (e.g. `ghcr.io/foo/bar:tag`), already resolved from shorthand.
+    Prebuilt { ref_str: String },
+}
+
+impl ImageSource {
+    pub fn is_prebuilt(&self) -> bool {
+        matches!(self, Self::Prebuilt { .. })
+    }
+
+    pub fn is_build(&self) -> bool {
+        matches!(self, Self::Build { .. })
+    }
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ImageConfig {
     pub base: String,
@@ -35,6 +58,26 @@ pub struct ImageConfig {
     pub packages: PackageConfig,
     #[serde(default)]
     pub run: RunConfig,
+}
+
+impl ImageConfig {
+    /// Resolve this config into a single `ImageSource` describing how
+    /// the image should be obtained.
+    pub fn source(&self) -> ImageSource {
+        if self.prebuilt {
+            ImageSource::Prebuilt {
+                ref_str: resolve_image_ref(
+                    &self.base,
+                    &self.prebuilt_registry,
+                    &self.prebuilt_repo,
+                ),
+            }
+        } else {
+            ImageSource::Build {
+                base: self.base.clone(),
+            }
+        }
+    }
 }
 
 fn default_pull_retry() -> u32 {
