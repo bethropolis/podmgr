@@ -20,7 +20,7 @@
 ## Quick Start
 
 ```bash
-# 1. Install via pre-built binary
+# Install via pre-built binary
 curl -fsSL https://bethropolis.github.io/podbox/install.sh | sh
 
 podbox create fedora    # pulls, builds, enables, starts
@@ -31,14 +31,25 @@ Also available from source: `git clone https://github.com/bethropolis/podbox && 
 
 ## Why podbox?
 
-Unlike other desktop sandboxing tools, `podbox` translates a single TOML config directly into native systemd Quadlet units — no daemon, no persistent orchestrator.
+Most desktop container tools make a trade-off: full integration means mounting your entire home directory into the container. podbox doesn't. You declare exactly what the container can see — directories, devices, and services — and nothing else is shared.
 
 | | podbox | Distrobox / Toolbox | Raw `podman run` |
 |---|---|---|---|
-| **Daemonless** | Yes (systemd units) | Yes (shell shims) | No |
-| **Sandbox** | Strict (declared dirs only) | Weak (full `$HOME` mount) | Custom per invocation |
+| **Home directory** | Isolated volume, opt-in sharing | Full `$HOME` mounted by default | Manual `-v` flags |
+| **Config** | Declarative TOML, version-controllable | Imperative CLI flags | Shell flags per run |
+| **Lifecycle** | systemd Quadlet units | Shell shims | Manual |
 | **D-Bus** | Filtered via `xdg-dbus-proxy` | Unfiltered session bus | Unfiltered |
-| **Config** | Declarative TOML | Imperative CLI params | Shell flags |
+| **Wayland / audio** | Opt-out (on by default) | Always on | Manual |
+| **GPU** | `auto` / `nvidia` / off | `--nvidia` flag | Manual device flags |
+| **Notifications** | Guest interceptor → host | Via shared D-Bus | Not supported |
+| **Clipboard** | Guest interceptor → host | Via shared home | Not supported |
+| **Host commands** | `host-exec` interceptor | `distrobox-host-exec` | Not supported |
+| **SSH agent** | Socket forward (opt-in) | Auto-mounted | Not supported |
+| **Baked images** | Yes — packages in image, not runtime | No — packages reinstalled on rebuild | N/A |
+| **Reproducibility** | Full — TOML → image → unit | Partial — image only | None |
+| **Runtime** | Podman only | Podman / Docker / lilipod | Any OCI runtime |
+
+> podbox is not a distrobox replacement. Distrobox optimises for maximum host integration and is excellent at that. podbox optimises for declared, reproducible environments where you control exactly what is shared.
 
 ## How It Works
 
@@ -148,17 +159,9 @@ Supports `linux/x86_64`. Uninstall with `scripts/uninstall.sh`.
 
 ## Troubleshooting
 
-### D-Bus proxy fails or container hangs
+Run `podbox doctor` first — it checks the most common issues automatically and explains what to fix.
 
-Missing `xdg-dbus-proxy` on the host. Install it or set `dbus = false` under `[integration]`.
-
-### UID mismatch inside mounts
-
-`UserNS=keep-id` + `User=root` maps host UID 1000 to container UID 999. Don't `chown` inside mounts — it will corrupt host ownership.
-
-### Desktop shims or interceptors not working
-
-The `podbox-guest` daemon relies on `/run/podbox/bin` being in the guest `$PATH`. Verify the systemd socket unit is active: `systemctl --user status <name>.socket`.
+For detailed guides on specific issues (container won't start, D-Bus proxy, Wayland socket errors, interceptors, UID mapping, SSH agent forwarding, build failures, shell hangs), see the [Troubleshooting Guide](docs/troubleshooting.md).
 
 ## Command Reference
 
@@ -205,6 +208,7 @@ All commands support `--dry-run` to preview without executing.
 | [D-Bus Proxy](docs/dbus-proxy.md) | Filtered D-Bus access via xdg-dbus-proxy |
 | [Quadlet Reference](docs/quadlet.md) | Generated systemd units |
 | [Host-Guest Protocol](docs/protocol.md) | Wire format and message types |
+| [Troubleshooting Guide](docs/troubleshooting.md) | Common issues and fixes |
 
 ## Contributing
 

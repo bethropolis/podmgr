@@ -36,6 +36,7 @@ nav:
   - D-Bus Proxy: dbus-proxy.md
   - Quadlet Reference: quadlet.md
   - Protocol: protocol.md
+  - Troubleshooting: troubleshooting.md
 
 extra_css:
   - stylesheets/catppuccin.css
