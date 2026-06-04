@@ -27,6 +27,13 @@ fn default_env() -> HostEnv {
         gpu_has_dri: false,
         gpu_has_nvidia: false,
         gpu_has_nvidia_uvm: false,
+        host_has_localtime: false,
+        host_has_timezone_file: false,
+        host_has_local_share_themes: false,
+        host_has_local_share_icons: false,
+        host_has_local_share_fonts: false,
+        host_shell: None,
+        host_locale: None,
     }
 }
 
@@ -476,4 +483,124 @@ fn quadlet_gpu_nvidia_without_uvm() {
     assert!(q.contains("AddDevice=-/dev/nvidiactl"));
     assert!(q.contains("AddDevice=-/dev/nvidia0"));
     assert!(!q.contains("nvidia-uvm"));
+}
+
+#[test]
+fn quadlet_timezone_mount_present_when_localtime_exists() {
+    let config = load_config("full.toml");
+    let mut env = default_env();
+    env.host_has_localtime = true;
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(q.contains("Volume=/etc/localtime:/etc/localtime:ro"));
+}
+
+#[test]
+fn quadlet_timezone_file_mount_present_when_exists() {
+    let config = load_config("full.toml");
+    let mut env = default_env();
+    env.host_has_timezone_file = true;
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(q.contains("Volume=/etc/timezone:/etc/timezone:ro"));
+}
+
+#[test]
+fn quadlet_timezone_mounts_absent_when_unavailable() {
+    let config = load_config("full.toml");
+    let env = default_env();
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(!q.contains("/etc/localtime"));
+    assert!(!q.contains("/etc/timezone"));
+}
+
+#[test]
+fn quadlet_modern_theme_path_present() {
+    let home = dirs::home_dir().unwrap();
+    std::fs::create_dir_all(home.join(".local/share/themes")).ok();
+    let _ = std::fs::create_dir_all(home.join(".themes")).ok();
+    let config = load_config("full.toml");
+    let mut config = config.clone();
+    config.integration.sync_themes = true;
+    let mut env = default_env();
+    env.host_has_local_share_themes = true;
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(q.contains("Volume=%h/.themes:/home/%u/.themes:ro"));
+    assert!(q.contains("Volume=%h/.local/share/themes:/home/%u/.local/share/themes:ro"));
+}
+
+#[test]
+fn quadlet_modern_icon_path_present() {
+    let home = dirs::home_dir().unwrap();
+    let _ = std::fs::create_dir_all(home.join(".icons")).ok();
+    let config = load_config("full.toml");
+    let mut config = config.clone();
+    config.integration.sync_icons = true;
+    let mut env = default_env();
+    env.host_has_local_share_icons = true;
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(q.contains("Volume=%h/.icons:/home/%u/.icons:ro"));
+    assert!(q.contains("Volume=%h/.local/share/icons:/home/%u/.local/share/icons:ro"));
+}
+
+#[test]
+fn quadlet_modern_font_path_present() {
+    let home = dirs::home_dir().unwrap();
+    let _ = std::fs::create_dir_all(home.join(".fonts")).ok();
+    let _ = std::fs::create_dir_all(home.join(".config/fontconfig")).ok();
+    let config = load_config("full.toml");
+    let mut config = config.clone();
+    config.integration.sync_fonts = true;
+    let mut env = default_env();
+    env.host_has_local_share_fonts = true;
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(q.contains("Volume=%h/.fonts:/home/%u/.fonts:ro"));
+    assert!(q.contains("Volume=%h/.local/share/fonts:/home/%u/.local/share/fonts:ro"));
+}
+
+#[test]
+fn quadlet_modern_paths_absent_when_disabled() {
+    let config = load_config("full.toml");
+    let mut env = default_env();
+    env.host_has_local_share_themes = true;
+    env.host_has_local_share_icons = true;
+    env.host_has_local_share_fonts = true;
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(!q.contains(".local/share/themes"));
+    assert!(!q.contains(".local/share/icons"));
+    assert!(!q.contains(".local/share/fonts"));
+}
+
+#[test]
+fn quadlet_locale_env_vars_present() {
+    let config = load_config("full.toml");
+    let mut env = default_env();
+    env.host_locale = Some("en_US.UTF-8".into());
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(q.contains("Environment=LANG=en_US.UTF-8"));
+    assert!(q.contains("Environment=LC_ALL=en_US.UTF-8"));
+    assert!(q.contains("Environment=LC_CTYPE=en_US.UTF-8"));
+}
+
+#[test]
+fn quadlet_locale_env_vars_absent_when_unset() {
+    let config = load_config("full.toml");
+    let env = default_env();
+    let q = quadlet::generate_container(&config, &env, &default_xdg());
+    assert!(!q.contains("Environment=LANG="));
+    assert!(!q.contains("Environment=LC_ALL="));
+}
+
+#[test]
+fn containerfile_includes_base_packages() {
+    let config = load_config("minimal.toml");
+    let cf = containerfile::generate(&config, "podbox-guest");
+    assert!(cf.contains("sudo"));
+    assert!(cf.contains("curl"));
+    assert!(cf.contains("tar"));
+    assert!(cf.contains("wget"));
+    assert!(cf.contains("coreutils"));
+    assert!(cf.contains("diffutils"));
+    assert!(cf.contains("findutils"));
+    assert!(cf.contains("grep"));
+    assert!(cf.contains("sed"));
+    assert!(cf.contains("gawk"));
 }

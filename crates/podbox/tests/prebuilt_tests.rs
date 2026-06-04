@@ -142,6 +142,13 @@ fn quadlet_prebuilt_uses_registry_image() {
         gpu_has_dri: false,
         gpu_has_nvidia: false,
         gpu_has_nvidia_uvm: false,
+        host_has_localtime: false,
+        host_has_timezone_file: false,
+        host_has_local_share_themes: false,
+        host_has_local_share_icons: false,
+        host_has_local_share_fonts: false,
+        host_shell: None,
+        host_locale: None,
     };
     let xdg = ResolvedXdgDirs {
         documents: None,
@@ -175,6 +182,13 @@ fn quadlet_custom_uses_build_ref() {
         gpu_has_dri: false,
         gpu_has_nvidia: false,
         gpu_has_nvidia_uvm: false,
+        host_has_localtime: false,
+        host_has_timezone_file: false,
+        host_has_local_share_themes: false,
+        host_has_local_share_icons: false,
+        host_has_local_share_fonts: false,
+        host_shell: None,
+        host_locale: None,
     };
     let xdg = ResolvedXdgDirs {
         documents: Some(PathBuf::from("/home/user/Documents")),
@@ -206,6 +220,13 @@ fn quadlet_has_environment_home() {
         gpu_has_dri: false,
         gpu_has_nvidia: false,
         gpu_has_nvidia_uvm: false,
+        host_has_localtime: false,
+        host_has_timezone_file: false,
+        host_has_local_share_themes: false,
+        host_has_local_share_icons: false,
+        host_has_local_share_fonts: false,
+        host_shell: None,
+        host_locale: None,
     };
     let xdg = podbox::xdg::ResolvedXdgDirs {
         documents: None,

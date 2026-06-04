@@ -134,11 +134,21 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         if h.join(".themes").exists() {
             lines.push(format!("Volume=%h/.themes:{home_in_container}/.themes:ro"));
         }
+        if env.host_has_local_share_themes {
+            lines.push(format!(
+                "Volume=%h/.local/share/themes:{home_in_container}/.local/share/themes:ro"
+            ));
+        }
     }
     if config.integration.sync_icons {
         let h = home();
         if h.join(".icons").exists() {
             lines.push(format!("Volume=%h/.icons:{home_in_container}/.icons:ro"));
+        }
+        if env.host_has_local_share_icons {
+            lines.push(format!(
+                "Volume=%h/.local/share/icons:{home_in_container}/.local/share/icons:ro"
+            ));
         }
     }
     if config.integration.sync_fonts {
@@ -146,11 +156,35 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         if h.join(".fonts").exists() {
             lines.push(format!("Volume=%h/.fonts:{home_in_container}/.fonts:ro"));
         }
+        if env.host_has_local_share_fonts {
+            lines.push(format!(
+                "Volume=%h/.local/share/fonts:{home_in_container}/.local/share/fonts:ro"
+            ));
+        }
     }
     if config.integration.sync_themes
         || config.integration.sync_icons
         || config.integration.sync_fonts
     {
+        lines.push(String::new());
+    }
+
+    // Timezone sync
+    if env.host_has_localtime {
+        lines.push("Volume=/etc/localtime:/etc/localtime:ro".into());
+    }
+    if env.host_has_timezone_file {
+        lines.push("Volume=/etc/timezone:/etc/timezone:ro".into());
+    }
+    if env.host_has_localtime || env.host_has_timezone_file {
+        lines.push(String::new());
+    }
+
+    // Locale environment
+    if let Some(ref locale) = env.host_locale {
+        lines.push(format!("Environment=LANG={}", locale));
+        lines.push(format!("Environment=LC_ALL={}", locale));
+        lines.push(format!("Environment=LC_CTYPE={}", locale));
         lines.push(String::new());
     }
 

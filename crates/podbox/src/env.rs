@@ -17,12 +17,20 @@ pub struct HostEnv {
     pub gpu_has_dri: bool,
     pub gpu_has_nvidia: bool,
     pub gpu_has_nvidia_uvm: bool,
+    pub host_has_localtime: bool,
+    pub host_has_timezone_file: bool,
+    pub host_has_local_share_themes: bool,
+    pub host_has_local_share_icons: bool,
+    pub host_has_local_share_fonts: bool,
+    pub host_shell: Option<String>,
+    pub host_locale: Option<String>,
 }
 
 /// Resolve the host environment.
 ///
 /// Reads `WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR` from the environment.
 /// Detects presence of Wayland, PipeWire, PulseAudio, and D-Bus sockets.
+/// Detects timezone files and modern XDG theme/icon/font directories.
 pub fn resolve() -> Result<HostEnv> {
     let uid = getuid().as_raw();
     let username = env::var("USER")
@@ -70,6 +78,21 @@ pub fn resolve() -> Result<HostEnv> {
     let gpu_has_nvidia = Path::new("/dev/nvidiactl").exists();
     let gpu_has_nvidia_uvm = Path::new("/dev/nvidia-uvm").exists();
 
+    let host_has_localtime = Path::new("/etc/localtime").exists();
+    let host_has_timezone_file = Path::new("/etc/timezone").exists();
+
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/root"));
+    let host_has_local_share_themes = home.join(".local/share/themes").exists();
+    let host_has_local_share_icons = home.join(".local/share/icons").exists();
+    let host_has_local_share_fonts = home.join(".local/share/fonts").exists();
+
+    let host_shell = env::var("SHELL").ok().filter(|s| !s.is_empty());
+    let host_locale = env::var("LANG")
+        .ok()
+        .or_else(|| env::var("LC_ALL").ok())
+        .or_else(|| env::var("LC_CTYPE").ok())
+        .filter(|s| !s.is_empty());
+
     Ok(HostEnv {
         uid,
         username,
@@ -82,5 +105,12 @@ pub fn resolve() -> Result<HostEnv> {
         gpu_has_dri,
         gpu_has_nvidia,
         gpu_has_nvidia_uvm,
+        host_has_localtime,
+        host_has_timezone_file,
+        host_has_local_share_themes,
+        host_has_local_share_icons,
+        host_has_local_share_fonts,
+        host_shell,
+        host_locale,
     })
 }
