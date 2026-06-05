@@ -3,6 +3,7 @@ use anyhow::Result;
 use podbox::podman::{query_state, ContainerState};
 
 pub mod lifecycle;
+pub mod runtime;
 
 /// Start a container if it isn't already running.
 ///
