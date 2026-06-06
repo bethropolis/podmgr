@@ -116,11 +116,26 @@ fn run() -> Result<()> {
             )
         })?
     } else {
-        match config::find_definition() {
-            Some(path) => Config::load(&path)?,
-            None => {
-                eprintln!("No definition file found, using embedded default. Create .podbox.toml to customize.");
-                Config::embedded()
+        let config_list = config::list_configs();
+        if config_list.len() > 1 && nix::unistd::isatty(0).unwrap_or(false) {
+            let items: Vec<String> = config_list
+                .iter()
+                .filter_map(|p| p.file_stem().map(|s| s.to_string_lossy().to_string()))
+                .collect();
+            let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                .with_prompt("Multiple containers found")
+                .items(&items)
+                .default(0)
+                .interact()
+                .map_err(|e| anyhow::anyhow!("selection failed: {}", e))?;
+            Config::load(&config_list[selection])?
+        } else {
+            match config::find_definition() {
+                Some(path) => Config::load(&path)?,
+                None => {
+                    eprintln!("No definition file found, using embedded default. Create .podbox.toml to customize.");
+                    Config::embedded()
+                }
             }
         }
     };
@@ -139,8 +154,8 @@ fn run() -> Result<()> {
     let xdg = podbox::xdg::resolve(&config.integration.xdg_dirs)?;
 
     match &cli.command {
-        Command::Build { name: _, rebuild } => {
-            commands::lifecycle::run_build(&config, &env, &xdg, cli.dry_run, *rebuild)?;
+        Command::Build { name: _, rebuild, no_diff } => {
+            commands::lifecycle::run_build(&config, &env, &xdg, cli.dry_run, *rebuild, *no_diff)?;
         }
 
         Command::Enable => {
@@ -177,6 +192,10 @@ fn run() -> Result<()> {
 
         Command::Logs { follow, tail } => {
             commands::runtime::run_logs(&name, *follow, *tail, cli.dry_run)?;
+        }
+
+        Command::Diff { apply } => {
+            commands::diff::run_diff(&config, &name, &env.username, *apply)?;
         }
 
         Command::Export { export_cmd } => {

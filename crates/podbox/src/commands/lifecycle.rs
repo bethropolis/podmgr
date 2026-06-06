@@ -14,10 +14,28 @@ pub fn run_build(
     xdg: &ResolvedXdgDirs,
     dry_run: bool,
     rebuild: bool,
+    no_diff: bool,
 ) -> Result<()> {
     podbox::build::run(config, env, xdg, dry_run, rebuild)?;
     if !dry_run && config.lifecycle.quadlet {
         println!("\nRun `podbox enable` to install Quadlet files.");
+    }
+    // Post-build drift check (best-effort).
+    if !dry_run && !no_diff {
+        let name = &config.container.name;
+        if let Ok(state) = podbox::podman::query_state(name) {
+            if state == podbox::podman::ContainerState::Running {
+                match podbox::diff::compute(config, name, &env.username) {
+                    Ok(result) if result.has_drift => {
+                        println!("\n── Package drift detected ──");
+                        println!("{}", podbox::diff::format_report(&result));
+                        println!("Run `podbox diff --apply` to update the TOML.");
+                    }
+                    Ok(_) => {}
+                    Err(e) => eprintln!("Warning: drift check skipped ({})", e),
+                }
+            }
+        }
     }
     Ok(())
 }

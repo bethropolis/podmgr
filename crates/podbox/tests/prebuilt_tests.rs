@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use podbox::config::{self, Config};
+use podbox::config::Config;
 use podbox::labels;
 
 fn load_config(name: &str) -> Config {
@@ -11,50 +11,46 @@ fn load_config(name: &str) -> Config {
     Config::parse(&content).unwrap()
 }
 
-// ---- Shorthand resolver ----
+// ---- Image source detection ----
 
 #[test]
-fn resolve_shorthand_to_full_ref() {
-    let ref_str = config::resolve_image_ref("cachy", "ghcr.io", "podbox");
-    assert_eq!(ref_str, "ghcr.io/podbox:cachy");
-}
-
-#[test]
-fn resolve_full_ref_unchanged() {
-    let ref_str = config::resolve_image_ref("ghcr.io/user/img:tag", "ghcr.io", "podbox");
-    assert_eq!(ref_str, "ghcr.io/user/img:tag");
-}
-
-#[test]
-fn resolve_tagged_ref_with_domain_unchanged() {
-    // `fedora:41` has `:` but prefix `fedora` has no `.` — treated as shorthand.
-    // Use a domain-like prefix to keep it as-is:
-    let ref_str = config::resolve_image_ref("docker.io/fedora:41", "ghcr.io", "podbox");
-    assert_eq!(ref_str, "docker.io/fedora:41");
-}
-
-#[test]
-fn resolve_shorthand_with_tag() {
-    // `fedora:41` — no `/`, prefix `fedora` has no `.`, so it's shorthand + tag
-    let ref_str = config::resolve_image_ref("fedora:41", "ghcr.io", "podbox");
-    assert_eq!(ref_str, "ghcr.io/podbox:fedora:41");
-}
-
-#[test]
-fn resolve_shorthand_uses_custom_registry() {
-    let ref_str = config::resolve_image_ref("cachy", "docker.io", "myuser/images");
-    assert_eq!(ref_str, "docker.io/myuser/images:cachy");
-}
-
-#[test]
-fn resolve_full_from_config() {
+fn source_prebuilt_when_image_ref_set() {
     let config = load_config("prebuilt.toml");
-    let ref_str = config::resolve_image_ref(
-        &config.image.base,
-        &config.image.prebuilt_registry,
-        &config.image.prebuilt_repo,
+    assert!(config.image.source().is_prebuilt());
+    match config.image.source() {
+        podbox::config::ImageSource::Prebuilt { ref_str } => {
+            assert_eq!(ref_str, "ghcr.io/bethropolis/podbox:cachy-latest");
+        }
+        _ => panic!("expected Prebuilt"),
+    }
+}
+
+#[test]
+fn source_build_when_image_ref_not_set() {
+    let config = load_config("full.toml");
+    assert!(config.image.source().is_build());
+    match config.image.source() {
+        podbox::config::ImageSource::Build { base } => {
+            assert_eq!(base, "fedora:41");
+        }
+        _ => panic!("expected Build"),
+    }
+}
+
+#[test]
+fn source_prebuilt_uses_image_ref_directly() {
+    // Verify image_ref is used verbatim, not resolved through shorthand
+    let config = load_config("prebuilt.toml");
+    assert_eq!(
+        config.image.image_ref.as_deref(),
+        Some("ghcr.io/bethropolis/podbox:cachy-latest")
     );
-    assert_eq!(ref_str, "ghcr.io/bethropolis/podbox:cachy-latest");
+}
+
+#[test]
+fn source_build_has_no_image_ref() {
+    let config = load_config("full.toml");
+    assert!(config.image.image_ref.is_none());
 }
 
 // ---- Containerfile prebuilt generation ----

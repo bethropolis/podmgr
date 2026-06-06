@@ -3,6 +3,7 @@ use anyhow::Result;
 use podbox::podman::{query_state, ContainerState};
 
 pub mod config;
+pub mod diff;
 pub mod lifecycle;
 pub mod runtime;
 

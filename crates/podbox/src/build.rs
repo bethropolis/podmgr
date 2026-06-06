@@ -82,7 +82,10 @@ pub fn run(
 // --- Prebuilt image path ----------------------------------------------------
 
 fn run_prebuilt(config: &Config, dry_run: bool, rebuild: bool) -> Result<()> {
-    let image_ref = crate::config::resolve_image_ref_full(config);
+    let image_ref = match config.image.source() {
+        crate::config::ImageSource::Prebuilt { ref_str } => ref_str,
+        _ => config.image.base.clone(),
+    };
     let local_tag = format!("localhost/podbox-{}:latest", config.image.name);
     let lock_path = build_context_dir(&config.container.name).join(".podbox.lock");
 
@@ -115,12 +118,14 @@ fn run_prebuilt(config: &Config, dry_run: bool, rebuild: bool) -> Result<()> {
             .get("podbox.guest_version")
             .or_else(|| labels.get("podmgr.guest_version"))
         {
-            if guest_ver != crate::VERSION {
+            let guest_clean = guest_ver.trim_start_matches('v');
+            let host_clean = crate::VERSION.trim_start_matches('v');
+            if guest_clean != host_clean {
                 eprintln!(
                     "Warning: image guest version (v{}) differs from host (v{}). \
                      Protocol compatibility will be validated at runtime.",
-                    guest_ver,
-                    crate::VERSION
+                    guest_clean,
+                    host_clean
                 );
             }
         }

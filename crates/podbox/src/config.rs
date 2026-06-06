@@ -37,17 +37,11 @@ impl ImageSource {
 pub struct ImageConfig {
     pub base: String,
     pub name: String,
-    /// When true, treat `base` as a ready-to-use image.
-    /// Skip Containerfile generation and `podman build`.
-    /// `packages`, `run`, and other build-time fields are ignored.
-    #[serde(default)]
-    pub prebuilt: bool,
-    /// Registry for shorthand resolution (e.g. "cachy" → "ghcr.io/you/podbox:cachy").
-    #[serde(default = "default_prebuilt_registry")]
-    pub prebuilt_registry: String,
-    /// Repository for shorthand resolution.
-    #[serde(default = "default_prebuilt_repo")]
-    pub prebuilt_repo: String,
+    /// When set, treat the image as prebuilt — pull this exact reference
+    /// instead of building from `base`.  `packages`, `run`, and other
+    /// build-time fields are ignored for prebuilt images.
+    #[serde(rename = "image", default)]
+    pub image_ref: Option<String>,
     /// Number of times to retry pulling the image on failure.
     #[serde(default = "default_pull_retry")]
     pub pull_retry: u32,
@@ -64,18 +58,13 @@ impl ImageConfig {
     /// Resolve this config into a single `ImageSource` describing how
     /// the image should be obtained.
     pub fn source(&self) -> ImageSource {
-        if self.prebuilt {
-            ImageSource::Prebuilt {
-                ref_str: resolve_image_ref(
-                    &self.base,
-                    &self.prebuilt_registry,
-                    &self.prebuilt_repo,
-                ),
-            }
-        } else {
-            ImageSource::Build {
+        match &self.image_ref {
+            Some(ref_str) => ImageSource::Prebuilt {
+                ref_str: ref_str.clone(),
+            },
+            None => ImageSource::Build {
                 base: self.base.clone(),
-            }
+            },
         }
     }
 }
@@ -87,13 +76,7 @@ fn default_pull_retry_delay() -> String {
     "5s".into()
 }
 
-fn default_prebuilt_registry() -> String {
-    "ghcr.io".into()
-}
 
-fn default_prebuilt_repo() -> String {
-    "yourname/podbox".into()
-}
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct PackageConfig {
@@ -505,35 +488,6 @@ pub fn config_dir() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("~/.config/podbox"))
 }
 
-/// Resolve a potentially-shorthand image reference to a full pullable ref.
-///
-/// - `"cachy"` → `"ghcr.io/yourname/podbox:cachy"`
-/// - `"ghcr.io/foo/bar:tag"` → unchanged
-/// - `"fedora:41"` → unchanged (contains `:` and a digit)
-pub fn resolve_image_ref(base: &str, registry: &str, repo: &str) -> String {
-    // Full URI already: contains `/` OR contains `:` + domain-like prefix
-    if base.contains('/')
-        || (base.contains(':') && base.split(':').next().unwrap_or("").contains('.'))
-    {
-        return base.to_string();
-    }
-    // Shorthand: "cachy" → "ghcr.io/yourname/podbox:cachy"
-    format!(
-        "{}/{}:{}",
-        registry.trim_end_matches('/'),
-        repo.trim_end_matches('/'),
-        base
-    )
-}
-
-pub fn resolve_image_ref_full(config: &Config) -> String {
-    resolve_image_ref(
-        &config.image.base,
-        &config.image.prebuilt_registry,
-        &config.image.prebuilt_repo,
-    )
-}
-
 /// Find a definition file.
 ///
 /// Search order:
@@ -588,6 +542,28 @@ pub fn find_definition() -> Option<PathBuf> {
     }
 
     None
+}
+
+/// List all config files in `~/.config/podbox/`.
+pub fn list_configs() -> Vec<std::path::PathBuf> {
+    let config_dir = config_dir();
+    if !config_dir.is_dir() {
+        return vec![];
+    }
+    let mut entries: Vec<_> = std::fs::read_dir(&config_dir)
+        .into_iter()
+        .flatten()
+        .filter_map(|e| e.ok())
+        .filter(|e| {
+            e.path()
+                .extension()
+                .map(|ext| ext == "toml")
+                .unwrap_or(false)
+        })
+        .map(|e| e.path())
+        .collect();
+    entries.sort();
+    entries
 }
 
 // ---------------------------------------------------------------------------

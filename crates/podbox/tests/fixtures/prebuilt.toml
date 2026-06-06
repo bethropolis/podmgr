@@ -1,9 +1,7 @@
 [image]
 base = "cachy-latest"
 name = "prebuilt"
-prebuilt = true
-prebuilt_registry = "ghcr.io"
-prebuilt_repo = "bethropolis/podbox"
+image = "ghcr.io/bethropolis/podbox:cachy-latest"
 
 [container]
 name = "prebuilt"

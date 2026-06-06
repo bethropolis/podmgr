@@ -114,12 +114,11 @@ pub fn run_serve(
 /// Pull a container image and tag it for podbox use.
 pub fn run_pull(config: &Config, image: &Option<String>, dry_run: bool) -> Result<()> {
     let image_ref = match image {
-        Some(ref img) => config::resolve_image_ref(
-            img,
-            &config.image.prebuilt_registry,
-            &config.image.prebuilt_repo,
-        ),
-        None => config::resolve_image_ref_full(config),
+        Some(ref img) => img.clone(),
+        None => match config.image.source() {
+            podbox::config::ImageSource::Prebuilt { ref_str } => ref_str,
+            podbox::config::ImageSource::Build { base } => base,
+        },
     };
     if dry_run {
         println!("podman pull {}", image_ref);
@@ -387,7 +386,7 @@ pub fn run_init(
         let toml = toml::to_string_pretty(&result.config)?;
         std::fs::write(&config_path, &toml)?;
         println!("Created: {}", config_path.display());
-        println!("Run `podbox create {}` to build and start.", result.name);
+        println!("Run `podbox start -C {}` to build, enable, and start.", result.name);
         return Ok(());
     }
 

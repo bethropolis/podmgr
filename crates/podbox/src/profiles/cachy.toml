@@ -1,9 +1,7 @@
 [image]
 name = "cachy"
 base = "cachy-latest"
-prebuilt = true
-prebuilt_registry = "ghcr.io"
-prebuilt_repo = "bethropolis/podbox"
+image = "ghcr.io/bethropolis/podbox:cachy-latest"
 
 [image.packages]
 manager = "pacman"

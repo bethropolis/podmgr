@@ -119,11 +119,21 @@ fn check_version_drift(
 }
 
 fn write_path_injection(bin_dir: &std::path::Path) -> std::io::Result<()> {
+    // POSIX shells (bash, zsh, sh)
     let conf_dir = std::path::PathBuf::from("/etc/profile.d");
     std::fs::create_dir_all(&conf_dir)?;
     let conf_path = conf_dir.join("podbox.sh");
     let content = format!("export PATH={}:$PATH\n", bin_dir.to_string_lossy());
     std::fs::write(conf_path, content)?;
+
+    // Fish shell
+    let fish_dir = std::path::PathBuf::from("/etc/fish/conf.d");
+    if fish_dir.is_dir() || std::fs::create_dir_all(&fish_dir).is_ok() {
+        let fish_path = fish_dir.join("podbox.fish");
+        let fish_content = format!("fish_add_path -m {}\n", bin_dir.to_string_lossy());
+        let _ = std::fs::write(fish_path, fish_content);
+    }
+
     Ok(())
 }
 

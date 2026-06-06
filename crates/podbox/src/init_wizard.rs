@@ -158,6 +158,8 @@ pub fn run_wizard(
 
     let shell = prompt_shell(detected_shell);
     config.container.name = name.clone();
+    config.image.name = name.clone();
+    config.container.home = crate::config::expand_tilde(&format!("~/containers/{}", name));
     config.container.shell = shell.full_path.clone();
     if !config
         .image

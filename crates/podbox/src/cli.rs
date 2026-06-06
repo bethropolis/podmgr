@@ -31,6 +31,9 @@ pub enum Command {
         /// Force rebuild even if definition hasn't changed.
         #[arg(long)]
         rebuild: bool,
+        /// Skip post-build drift check.
+        #[arg(long)]
+        no_diff: bool,
     },
 
     /// Install Quadlet systemd files and enable the container.
@@ -153,6 +156,13 @@ pub enum Command {
     Completions {
         /// Shell to generate completions for.
         shell: Shell,
+    },
+
+    /// Compare declared packages against the running container.
+    Diff {
+        /// Update the config TOML's install list to match the container.
+        #[arg(long)]
+        apply: bool,
     },
 
     /// Find the definition file that would be used.

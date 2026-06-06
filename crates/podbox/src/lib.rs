@@ -11,6 +11,7 @@ pub mod build;
 pub mod cli;
 pub mod codegen;
 pub mod config;
+pub mod diff;
 pub mod env;
 pub mod error;
 pub mod export;
