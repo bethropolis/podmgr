@@ -4,7 +4,7 @@ project_name: podbox
 
 before:
   hooks:
-    - rustup target add x86_64-unknown-linux-gnu x86_64-unknown-linux-musl
+    - rustup target add x86_64-unknown-linux-gnu x86_64-unknown-linux-musl aarch64-unknown-linux-gnu aarch64-unknown-linux-musl
 
 builds:
   - id: podbox
@@ -13,6 +13,7 @@ builds:
     binary: podbox
     targets:
       - x86_64-unknown-linux-gnu
+      - aarch64-unknown-linux-gnu
     flags:
       - --release
       - -p=podbox
@@ -23,6 +24,7 @@ builds:
     binary: podbox-guest
     targets:
       - x86_64-unknown-linux-musl
+      - aarch64-unknown-linux-musl
     flags:
       - --release
       - -p=podbox-guest
@@ -31,7 +33,7 @@ archives:
   - id: podbox
     ids:
       - podbox
-    name_template: "podbox-{{ .Tag }}-linux-x86_64"
+    name_template: "podbox-{{ .Tag }}-linux-{{ .Arch | replace \"amd64\" \"x86_64\" }}"
     formats: ["tar.gz"]
     wrap_in_directory: false
 checksum:
@@ -49,6 +51,7 @@ dockers_v2:
     dockerfile: Dockerfile.goreleaser
     platforms:
       - linux/amd64
+      - linux/arm64
     build_args:
       BASE_IMAGE: docker.io/cachyos/cachyos:latest
     labels:
@@ -76,6 +79,7 @@ dockers_v2:
     dockerfile: Dockerfile.goreleaser
     platforms:
       - linux/amd64
+      - linux/arm64
     build_args:
       BASE_IMAGE: docker.io/library/fedora:44
     labels:

@@ -42,7 +42,11 @@ fn embed_guest() {
     // Prefer a fully static musl build so the embedded guest works in any
     // container regardless of libc. Fall back to the host default target if
     // the musl target isn't installed.
-    let musl_target = "x86_64-unknown-linux-musl";
+    let arch = std::env::var("CARGO_CFG_TARGET_ARCH").unwrap_or_default();
+    let musl_target = match arch.as_str() {
+        "aarch64" => "aarch64-unknown-linux-musl",
+        _ => "x86_64-unknown-linux-musl",
+    };
     let musl_available = Command::new("rustup")
         .args(["target", "list", "--installed"])
         .output()
