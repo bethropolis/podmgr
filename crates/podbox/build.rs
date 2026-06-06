@@ -37,16 +37,51 @@ fn embed_guest() {
         .parent()
         .expect("crates/podbox should have a grandparent workspace root");
     let guest_target = workspace_root.join("target").join("guest-build");
-
-    let status = Command::new("cargo")
-        .args(["build", "--release", "-p", "podbox-guest", "--target-dir"])
-        .arg(&guest_target)
-        .status()
-        .expect("Failed to launch cargo build for podbox-guest");
-    assert!(status.success(), "podbox-guest build failed");
-
-    let guest_path = guest_target.join("release").join("podbox-guest");
     let out_dir = PathBuf::from(std::env::var("OUT_DIR").unwrap());
+
+    // Prefer a fully static musl build so the embedded guest works in any
+    // container regardless of libc. Fall back to the host default target if
+    // the musl target isn't installed.
+    let musl_target = "x86_64-unknown-linux-musl";
+    let musl_available = Command::new("rustup")
+        .args(["target", "list", "--installed"])
+        .output()
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).contains(musl_target))
+        .unwrap_or(false);
+
+    let (guest_path, target_label) = if musl_available {
+        let path = guest_target
+            .join(musl_target)
+            .join("release")
+            .join("podbox-guest");
+        let status = Command::new("cargo")
+            .args([
+                "build",
+                "--release",
+                "--target",
+                musl_target,
+                "-p",
+                "podbox-guest",
+                "--target-dir",
+            ])
+            .arg(&guest_target)
+            .status()
+            .expect("Failed to launch cargo build for podbox-guest");
+        assert!(status.success(), "podbox-guest musl build failed");
+        (path, "musl / static")
+    } else {
+        let path = guest_target.join("release").join("podbox-guest");
+        let status = Command::new("cargo")
+            .args(["build", "--release", "-p", "podbox-guest", "--target-dir"])
+            .arg(&guest_target)
+            .status()
+            .expect("Failed to launch cargo build for podbox-guest");
+        assert!(status.success(), "podbox-guest build failed");
+        (path, "dynamic")
+    };
+
+    println!("cargo:warning=podbox-guest binary built ({target_label})");
 
     let guest_bytes = std::fs::read(&guest_path).expect("failed to read podbox-guest binary");
 
