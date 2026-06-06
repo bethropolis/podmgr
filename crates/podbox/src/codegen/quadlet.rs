@@ -78,7 +78,8 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
 
     // [Container]
     lines.push("[Container]".into());
-    if config.image.source().is_prebuilt() {
+    if config.image.source().is_prebuilt() && config.image.packages.install.is_empty() {
+        // No packages to install — reference the prebuilt image directly.
         let ref_str = match config.image.source() {
             crate::config::ImageSource::Prebuilt { ref_str } => ref_str,
             _ => config.image.base.clone(),
@@ -87,7 +88,8 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         lines.push(format!("Retry={}", config.image.pull_retry));
         lines.push(format!("RetryDelay={}", config.image.pull_retry_delay));
     } else {
-        lines.push(format!("Image={}.build", name));
+        // Packages to install (or custom build) — use the local overlay image.
+        lines.push(format!("Image=localhost/podbox-{}:latest", config.image.name));
     }
     lines.push(format!("ContainerName={}", name));
     lines.push("UserNS=keep-id".into());
