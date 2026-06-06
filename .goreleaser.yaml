@@ -33,7 +33,7 @@ archives:
   - id: podbox
     ids:
       - podbox
-    name_template: "podbox-{{ .Tag }}-linux-{{ .Arch | replace \"amd64\" \"x86_64\" }}"
+    name_template: "podbox-{{ .Tag }}-linux-{{ if eq .Arch \"amd64\" }}x86_64{{ else }}{{ .Arch }}{{ end }}"
     formats: ["tar.gz"]
     wrap_in_directory: false
 checksum:
