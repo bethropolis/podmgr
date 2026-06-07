@@ -123,6 +123,7 @@ PREFIX="${PREFIX:-$HOME/.local}"
 SUDO=""
 BIN_DIR="$PREFIX/bin"
 COMP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"
+ZSH_COMP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"
 FISH_COMP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
 
 usage() {
@@ -148,6 +149,7 @@ if $SYSTEM; then
   PREFIX="/usr/local"
   BIN_DIR="/usr/local/bin"
   COMP_DIR="/usr/share/bash-completion/completions"
+  ZSH_COMP_DIR="/usr/share/zsh/site-functions"
   FISH_COMP_DIR="/usr/share/fish/completions"
   SUDO="sudo"
 fi
@@ -165,10 +167,10 @@ build_binaries() {
   if cargo build --release -p podbox 2>&1 | \
       grep -E "^(error|warning\[)" | \
       while IFS= read -r line; do detail "$line"; done; [ "${PIPESTATUS[0]}" -eq 0 ]; then
-    ok "podbox ${DIM}(podbox-guest embedded)${RST}"
+    ok "podbox"
   else
     cargo build --release -p podbox || die "podbox build failed"
-    ok "podbox ${DIM}(podbox-guest embedded)${RST}"
+    ok "podbox"
   fi
 }
 
@@ -183,14 +185,14 @@ install_binaries() {
   [ -f "$podbox_src" ]  || die "Binary not found: $podbox_src  (hint: set PODBOX_BIN)"
 
   asroot install -m 755 "$podbox_src" "$BIN_DIR/podbox"
-  ok "podbox  ${DIM}→ $BIN_DIR/podbox (podbox-guest embedded)${RST}"
+  ok "podbox  ${DIM}→ $BIN_DIR/podbox${RST}"
 }
 
 # ── Completions ───────────────────────────────────────────
 install_completions() {
   step "Installing shell completions"
 
-  asroot mkdir -p "$COMP_DIR" "$FISH_COMP_DIR"
+  asroot mkdir -p "$COMP_DIR" "$ZSH_COMP_DIR" "$FISH_COMP_DIR"
 
   if "$BIN_DIR/podbox" completions bash 2>/dev/null | asroot tee "$COMP_DIR/podbox" >/dev/null; then
     ok "bash          ${DIM}→ $COMP_DIR/podbox${RST}"
@@ -198,16 +200,16 @@ install_completions() {
     warn "bash completions skipped"
   fi
 
+  if "$BIN_DIR/podbox" completions zsh 2>/dev/null | asroot tee "$ZSH_COMP_DIR/_podbox" >/dev/null; then
+    ok "zsh           ${DIM}→ $ZSH_COMP_DIR/_podbox${RST}"
+  else
+    warn "zsh completions skipped"
+  fi
+
   if "$BIN_DIR/podbox" completions fish 2>/dev/null | asroot tee "$FISH_COMP_DIR/podbox.fish" >/dev/null; then
     ok "fish          ${DIM}→ $FISH_COMP_DIR/podbox.fish${RST}"
   else
     warn "fish completions skipped"
-  fi
-
-  if "$BIN_DIR/podbox" completions zsh 2>/dev/null | asroot tee "$COMP_DIR/_podbox" >/dev/null; then
-    ok "zsh           ${DIM}→ $COMP_DIR/_podbox${RST}"
-  else
-    warn "zsh completions skipped"
   fi
 }
 

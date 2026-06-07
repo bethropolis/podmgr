@@ -99,6 +99,7 @@ PREFIX="${PREFIX:-$HOME/.local}"
 SUDO=""
 BIN_DIR="$PREFIX/bin"
 COMP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"
+ZSH_COMP_DIR="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"
 FISH_COMP_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
 
 PODBOX_CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/podbox"
@@ -144,6 +145,7 @@ if $SYSTEM; then
   PREFIX="/usr/local"
   BIN_DIR="/usr/local/bin"
   COMP_DIR="/usr/share/bash-completion/completions"
+  ZSH_COMP_DIR="/usr/share/zsh/site-functions"
   FISH_COMP_DIR="/usr/share/fish/completions"
   SUDO="sudo"
 fi
@@ -183,6 +185,10 @@ remove_completions() {
   if [ -f "$COMP_DIR/_podbox" ]; then
     asroot rm -f "$COMP_DIR/_podbox"
     ok "zsh  ${DIM}← $COMP_DIR/_podbox${RST}"
+  fi
+  if [ -f "$ZSH_COMP_DIR/_podbox" ]; then
+    asroot rm -f "$ZSH_COMP_DIR/_podbox"
+    ok "zsh  ${DIM}← $ZSH_COMP_DIR/_podbox${RST}"
   fi
   if [ -f "$FISH_COMP_DIR/podbox.fish" ]; then
     asroot rm -f "$FISH_COMP_DIR/podbox.fish"

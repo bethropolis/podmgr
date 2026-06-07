@@ -5,7 +5,6 @@ REPO="bethropolis/podbox"
 BINDIR="${HOME}/.local/bin"
 
 # architecture detection
-OS="linux"
 ARCH=$(uname -m)
 case "$ARCH" in
     x86_64)         ARCH="x86_64" ;;
@@ -31,7 +30,7 @@ if [ -z "$TAG" ]; then
     exit 1
 fi
 
-echo "Downloading podbox ${TAG} for ${OS}/${ARCH}..."
+echo "Downloading podbox ${TAG} for linux/${ARCH}..."
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
@@ -39,31 +38,49 @@ cd "$TMP"
 
 BASE_URL="https://github.com/${REPO}/releases/download/${TAG}"
 
-curl -sSfLO "${BASE_URL}/podbox-${TAG}-${OS}-${ARCH}.tar.gz"
+ARCHIVE="podbox-${TAG}-linux-${ARCH}.tar.gz"
+curl -sSfLO "${BASE_URL}/${ARCHIVE}"
 curl -sSfLO "${BASE_URL}/checksums.txt"
 
 # verify checksums
 if [ -n "$SHASUM" ]; then
-    grep -E "(podbox-${TAG}-${OS}-${ARCH})" checksums.txt \
-        | sha256sum -c - 2>/dev/null || {
-            echo "Checksum verification failed. Aborting."
-            exit 1
-        }
+    grep -F "$ARCHIVE" checksums.txt | sha256sum -c - 2>/dev/null || {
+        echo "Checksum verification failed. Aborting."
+        exit 1
+    }
     echo "Checksums verified."
 fi
 
-# install
+# install single binary (guest is embedded)
 mkdir -p "$BINDIR"
-tar -xzf "podbox-${TAG}-${OS}-${ARCH}.tar.gz" -C "$BINDIR"
+tar -xzf "$ARCHIVE" -C "$BINDIR"
 chmod +x "$BINDIR/podbox"
 
-echo "Installed podbox ${TAG} to ${BINDIR}  (podbox-guest embedded)"
+# clean up stale podbox-guest from pre-embedding installs
+rm -f "$BINDIR/podbox-guest"
 
-# shell completions
+echo "Installed podbox ${TAG} to ${BINDIR}"
+
+# shell completions — generate for each detected shell
 if command -v "$BINDIR/podbox" >/dev/null 2>&1; then
-    comp_dir="${XDG_DATA_HOME:-$HOME/.local/share}/completions"
-    mkdir -p "$comp_dir" 2>/dev/null || true
-    "$BINDIR/podbox" completions bash > "$comp_dir/podbox.bash" 2>/dev/null || true
+    # bash
+    if command -v bash >/dev/null 2>&1; then
+        comp_dir="${XDG_DATA_HOME:-$HOME/.local/share}/bash-completion/completions"
+        mkdir -p "$comp_dir" 2>/dev/null || true
+        "$BINDIR/podbox" completions bash > "$comp_dir/podbox" 2>/dev/null || true
+    fi
+    # zsh
+    if command -v zsh >/dev/null 2>&1; then
+        comp_dir="${XDG_DATA_HOME:-$HOME/.local/share}/zsh/site-functions"
+        mkdir -p "$comp_dir" 2>/dev/null || true
+        "$BINDIR/podbox" completions zsh > "$comp_dir/_podbox" 2>/dev/null || true
+    fi
+    # fish
+    if command -v fish >/dev/null 2>&1; then
+        comp_dir="${XDG_CONFIG_HOME:-$HOME/.config}/fish/completions"
+        mkdir -p "$comp_dir" 2>/dev/null || true
+        "$BINDIR/podbox" completions fish > "$comp_dir/podbox.fish" 2>/dev/null || true
+    fi
 fi
 
 # PATH hint
