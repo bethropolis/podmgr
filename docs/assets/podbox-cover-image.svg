@@ -1,0 +1,85 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="100%" height="auto">
+  <defs>
+    <!-- Seamless diagonal brand gradient across elements -->
+    <linearGradient id="g" x1="80" y1="130" x2="1090" y2="470" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#3b82f6"/>
+      <stop offset="25%"  stop-color="#6366f1"/>
+      <stop offset="50%"  stop-color="#8b5cf6"/>
+      <stop offset="75%"  stop-color="#d946ef"/>
+      <stop offset="100%" stop-color="#ec4899"/>
+    </linearGradient>
+
+    <!-- Ambient glowing backgrounds -->
+    <radialGradient id="glow-left" cx="300" cy="300" r="400" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366f1" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#080b11" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glow-right" cx="920" cy="300" r="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#d946ef" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#080b11" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Custom capsule mask mapped to the right-hand icon coordinates -->
+    <mask id="split-cover">
+      <rect x="0" y="0" width="1200" height="600" fill="#ffffff" />
+      <rect x="700" y="291" width="500" height="18" fill="#000000" />
+    </mask>
+  </defs>
+
+  <!-- Deep space background canvas -->
+  <rect width="1200" height="600" fill="#080b11"/>
+  
+  <!-- Ambient light glow paths -->
+  <rect width="1200" height="600" fill="url(#glow-left)"/>
+  <rect width="1200" height="600" fill="url(#glow-right)"/>
+
+  <!-- ================= LEFT COLUMN CONTENT ================= -->
+
+  <!-- 1. The Vector-parsed Wordmark -->
+  <g>
+  </g>
+
+  <!-- 2. Tagline (system-sans, italicized, balanced spacing) -->
+  <text x="80" y="325" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif" font-size="22" font-style="italic" font-weight="500" fill="#94a3b8" letter-spacing="-0.5px">Define once. Run anywhere. No daemon.</text>
+
+  <!-- 3. Glassmorphism Feature Chips (Y=375) -->
+  <!-- Chip 1: Podman Native -->
+  <g transform="translate(80, 375)">
+    <rect x="0" y="0" width="130" height="36" rx="18" fill="rgba(30, 41, 59, 0.4)" stroke="rgba(59, 130, 246, 0.25)" stroke-width="1.5" />
+    <circle cx="16" cy="18" r="4" fill="#3b82f6" />
+    <text x="28" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600" fill="#e2e8f0" text-anchor="start">Podman Native</text>
+  </g>
+
+  <!-- Chip 2: systemd Managed -->
+  <g transform="translate(222, 375)">
+    <rect x="0" y="0" width="145" height="36" rx="18" fill="rgba(30, 41, 59, 0.4)" stroke="rgba(99, 102, 241, 0.25)" stroke-width="1.5" />
+    <circle cx="16" cy="18" r="4" fill="#6366f1" />
+    <text x="28" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600" fill="#e2e8f0" text-anchor="start">systemd Managed</text>
+  </g>
+
+  <!-- Chip 3: Wayland & Audio -->
+  <g transform="translate(379, 375)">
+    <rect x="0" y="0" width="140" height="36" rx="18" fill="rgba(30, 41, 59, 0.4)" stroke="rgba(139, 92, 246, 0.25)" stroke-width="1.5" />
+    <circle cx="16" cy="18" r="4" fill="#8b5cf6" />
+    <text x="28" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600" fill="#e2e8f0" text-anchor="start">Wayland &amp; Audio</text>
+  </g>
+
+  <!-- Chip 4: Strict Sandbox -->
+  <g transform="translate(531, 375)">
+    <rect x="0" y="0" width="130" height="36" rx="18" fill="rgba(30, 41, 59, 0.4)" stroke="rgba(217, 70, 239, 0.25)" stroke-width="1.5" />
+    <circle cx="16" cy="18" r="4" fill="#d946ef" />
+    <text x="28" y="22" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="12" font-weight="600" fill="#e2e8f0" text-anchor="start">Strict Sandbox</text>
+  </g>
+
+
+  <!-- ================= RIGHT COLUMN BRAND ICON ================= -->
+  <!-- Centered vertically in the 600px height at Y=130 -->
+  <g>
+    <!-- Outer Squircle Frame (Width=340, Height=340, Stroke=40) -->
+    <rect x="750" y="130" width="340" height="340" rx="80" fill="none" stroke="url(#g)" stroke-width="40" />
+    
+    <!-- Centered Inner Pod split capsule (Width=92, Height=184, split-mask applied) -->
+    <rect x="874" y="208" width="92" height="184" rx="46" fill="url(#g)" mask="url(#split-cover)" />
+  </g>
+
+</svg>
