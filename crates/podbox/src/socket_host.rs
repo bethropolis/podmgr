@@ -344,10 +344,7 @@ fn validate_host_exec_args(args: &[String]) -> Result<(), String> {
             || lower.starts_with("--remote=")
             || lower == "-o"
         {
-            return Err(format!(
-                "argument {:?} uses a restricted flag pattern",
-                arg
-            ));
+            return Err(format!("argument {:?} uses a restricted flag pattern", arg));
         }
     }
     Ok(())

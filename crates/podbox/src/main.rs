@@ -206,7 +206,10 @@ fn run() -> Result<()> {
             commands::runtime::run_shell_enter(&config, &name, cli.dry_run)?;
         }
 
-        Command::Exec { args: cmd_args, root } => {
+        Command::Exec {
+            args: cmd_args,
+            root,
+        } => {
             commands::runtime::run_exec(&env, &name, cmd_args, cli.dry_run, *root)?;
         }
 

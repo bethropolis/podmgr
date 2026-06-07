@@ -46,7 +46,13 @@ pub fn run_shell_enter(config: &Config, name: &str, dry_run: bool) -> Result<()>
 }
 
 /// Execute an arbitrary command inside the container.
-pub fn run_exec(env: &HostEnv, name: &str, cmd_args: &[String], dry_run: bool, root: bool) -> Result<()> {
+pub fn run_exec(
+    env: &HostEnv,
+    name: &str,
+    cmd_args: &[String],
+    dry_run: bool,
+    root: bool,
+) -> Result<()> {
     let tty_flag = if nix::unistd::isatty(0).unwrap_or(false) {
         "-it"
     } else {

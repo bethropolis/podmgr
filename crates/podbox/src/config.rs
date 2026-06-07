@@ -556,7 +556,10 @@ impl Config {
                 errors.push(format!("container.env: key {:?} contains newline", key));
             }
             if val.contains('\n') {
-                errors.push(format!("container.env: value for {:?} contains newline", key));
+                errors.push(format!(
+                    "container.env: value for {:?} contains newline",
+                    key
+                ));
             }
         }
 
@@ -597,7 +600,8 @@ home = "~/containers/podbox"
 
 fn is_valid_name(s: &str) -> bool {
     !s.is_empty()
-        && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+        && s.chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
 }
 
 fn is_absolute_path(s: &str) -> bool {
@@ -609,7 +613,10 @@ fn is_valid_memory(s: &str) -> bool {
     if s.is_empty() {
         return false;
     }
-    let digits: String = s.chars().take_while(|c| c.is_ascii_digit() || *c == '.').collect();
+    let digits: String = s
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
     let suffix: String = s.chars().skip(digits.len()).collect();
     if digits.is_empty() || digits == "." {
         return false;
@@ -617,7 +624,11 @@ fn is_valid_memory(s: &str) -> bool {
     if digits.starts_with('.') || (digits.chars().filter(|&c| c == '.').count() > 1) {
         return false;
     }
-    suffix.is_empty() || matches!(suffix.as_str(), "k" | "K" | "m" | "M" | "g" | "G" | "t" | "T")
+    suffix.is_empty()
+        || matches!(
+            suffix.as_str(),
+            "k" | "K" | "m" | "M" | "g" | "G" | "t" | "T"
+        )
 }
 
 // ---------------------------------------------------------------------------
