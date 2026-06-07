@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/podbox-logo.svg">
-    <img src="docs/assets/podbox-logo.svg" alt="podbox">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/podbox-logo.png">
+    <img src="docs/assets/podbox-logo.png" alt="podbox">
   </picture>
 </p>
 
