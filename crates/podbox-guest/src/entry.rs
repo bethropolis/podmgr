@@ -239,9 +239,35 @@ fn setup_user(user: &str, uid: u32, gid: u32) {
         .copied()
         .collect();
     if !existing_groups.is_empty() {
-        let _ = std::process::Command::new("usermod")
-            .args(["-aG", &existing_groups.join(","), user])
-            .status();
+        let group_content = std::fs::read_to_string("/etc/group").unwrap_or_default();
+        let mut modified = false;
+        let patched: String = group_content
+            .lines()
+            .map(|line| {
+                let parts: Vec<&str> = line.splitn(4, ':').collect();
+                if parts.len() == 4 && existing_groups.contains(&parts[0]) {
+                    let members = parts[3];
+                    if members.split(',').any(|m| m == user) {
+                        return line.to_string();
+                    }
+                    modified = true;
+                    if members.is_empty() {
+                        format!("{}:{}:{}:{}", parts[0], parts[1], parts[2], user)
+                    } else {
+                        format!(
+                            "{}:{}:{}:{},{}",
+                            parts[0], parts[1], parts[2], members, user
+                        )
+                    }
+                } else {
+                    line.to_string()
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        if modified {
+            let _ = std::fs::write("/etc/group", patched + "\n");
+        }
     }
 
     // 4. Passwordless sudo

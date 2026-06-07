@@ -11,6 +11,16 @@ mod commands;
 
 pub const VERSION: &str = env!("PODBOX_VERSION");
 
+/// Commands that need image label defaults applied to the config.
+/// These generate Quadlet files or build the image — the rest can skip
+/// the ~100ms `podman inspect` fork.
+fn needs_image_labels(cmd: &Command) -> bool {
+    matches!(
+        cmd,
+        Command::Build { .. } | Command::Enable { .. } | Command::Update { .. }
+    )
+}
+
 fn extract_positional_name(cmd: &Command) -> Option<String> {
     match cmd {
         Command::Build { name, .. }
@@ -166,11 +176,13 @@ fn run() -> Result<()> {
 
     let name = config.container.name.clone();
 
-    // Apply image label defaults (best-effort; image may not be pulled yet)
-    let local_tag = format!("localhost/podbox-{}:latest", config.image.name);
-    if let Ok(true) = podbox::podman::image_exists(&local_tag) {
-        if let Ok(labels) = podbox::labels::fetch(&local_tag) {
-            podbox::labels::apply_defaults(&mut config, &labels);
+    // Apply image label defaults — only for commands that generate config from labels
+    if needs_image_labels(&cli.command) {
+        let local_tag = format!("localhost/podbox-{}:latest", config.image.name);
+        if let Ok(true) = podbox::podman::image_exists(&local_tag) {
+            if let Ok(labels) = podbox::labels::fetch(&local_tag) {
+                podbox::labels::apply_defaults(&mut config, &labels);
+            }
         }
     }
 
@@ -235,7 +247,7 @@ fn run() -> Result<()> {
         }
 
         Command::Export { export_cmd } => {
-            commands::config::run_export(&name, export_cmd)?;
+            commands::config::run_export(&name, Some(&config), export_cmd)?;
         }
 
         Command::Remove {

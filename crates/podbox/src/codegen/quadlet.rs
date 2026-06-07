@@ -322,7 +322,15 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
 
     // Auto-update
     if config.lifecycle.auto_update {
-        lines.push("Label=io.containers.autoupdate=registry".into());
+        if config.image.source().is_prebuilt() {
+            lines.push("Label=io.containers.autoupdate=registry".into());
+        } else {
+            eprintln!(
+                "Warning: auto_update is true for '{}' but the image is built \
+                 from source. Auto-update only works with prebuilt images.",
+                config.container.name
+            );
+        }
         lines.push(String::new());
     }
 
@@ -340,6 +348,9 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     // [Service]
     lines.push("[Service]".into());
     lines.push("Restart=on-failure".into());
+    lines.push("RestartSec=2s".into());
+    lines.push("StartLimitBurst=5".into());
+    lines.push("StartLimitIntervalSec=30s".into());
     if config.lifecycle.on_stop == crate::config::OnStop::Remove {
         lines.push("AutoRemove=true".into());
     }
@@ -410,6 +421,7 @@ Description=podbox host socket server -- {name}
 Type=simple
 ExecStart={podbox_bin} serve {name}
 Restart=on-failure
+RestartSec=2s
 RuntimeDirectory=podbox
 
 [Install]

@@ -239,9 +239,21 @@ pub enum Command {
 #[derive(Subcommand)]
 pub enum ExportCommand {
     /// Export a .desktop application.
-    App { name: String },
+    App {
+        /// Application name to export (omit with --all).
+        name: Option<String>,
+        /// Export all apps listed in the config.
+        #[arg(long, conflicts_with = "name")]
+        all: bool,
+    },
     /// Export a binary shim.
-    Bin { name: String },
+    Bin {
+        /// Binary name to export (omit with --all).
+        name: Option<String>,
+        /// Export all bins listed in the config.
+        #[arg(long, conflicts_with = "name")]
+        all: bool,
+    },
     /// Remove all exports for the container.
     Clean,
 }

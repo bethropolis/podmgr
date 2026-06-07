@@ -320,8 +320,8 @@ fn quadlet_no_literal_percent_h() {
 }
 
 #[test]
-fn quadlet_auto_update_label_present() {
-    let config = load_config("full.toml");
+fn quadlet_auto_update_label_present_for_prebuilt() {
+    let config = load_config("prebuilt.toml");
     let mut config = config.clone();
     config.lifecycle.auto_update = true;
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
@@ -329,7 +329,16 @@ fn quadlet_auto_update_label_present() {
 }
 
 #[test]
-fn quadlet_auto_update_label_absent() {
+fn quadlet_auto_update_label_absent_for_build() {
+    let config = load_config("full.toml");
+    let mut config = config.clone();
+    config.lifecycle.auto_update = true;
+    let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
+    assert!(!q.contains("io.containers.autoupdate"));
+}
+
+#[test]
+fn quadlet_auto_update_label_absent_when_disabled() {
     let config = load_config("full.toml");
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
     assert!(!q.contains("io.containers.autoupdate"));
@@ -603,6 +612,23 @@ fn containerfile_includes_base_packages() {
     assert!(cf.contains("grep"));
     assert!(cf.contains("sed"));
     assert!(cf.contains("gawk"));
+}
+
+#[test]
+fn quadlet_container_has_restart_rate_limiting() {
+    let config = load_config("full.toml");
+    let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
+    assert!(q.contains("Restart=on-failure"));
+    assert!(q.contains("RestartSec=2s"));
+    assert!(q.contains("StartLimitBurst=5"));
+    assert!(q.contains("StartLimitIntervalSec=30s"));
+}
+
+#[test]
+fn quadlet_host_service_has_restart_sec() {
+    let unit = quadlet::generate_host_service("myenv");
+    assert!(unit.contains("Restart=on-failure"));
+    assert!(unit.contains("RestartSec=2s"));
 }
 
 #[test]
