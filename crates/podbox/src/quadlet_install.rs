@@ -127,6 +127,18 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
             format!("{}-proxy.service", name).into(),
         ];
         let _ = crate::process::run_piped("systemctl", &reset_args);
+
+        // Enable and start the socket so it's active immediately and on boot.
+        // The socket has Service=<name>-host.service, so this also triggers
+        // the host socket server.
+        let socket_unit = format!("{}.socket", name);
+        let enable_args: Vec<std::ffi::OsString> = vec![
+            "--user".into(),
+            "enable".into(),
+            "--now".into(),
+            socket_unit.into(),
+        ];
+        let _ = crate::process::run_piped("systemctl", &enable_args);
     } else {
         // 5.5 fallback: copy files manually
         std::fs::create_dir_all(&qdir)?;
@@ -180,6 +192,15 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
             format!("{}-proxy.service", name).into(),
         ];
         let _ = crate::process::run_piped("systemctl", &reset_args);
+
+        let socket_unit = format!("{}.socket", name);
+        let enable_args: Vec<std::ffi::OsString> = vec![
+            "--user".into(),
+            "enable".into(),
+            "--now".into(),
+            socket_unit.into(),
+        ];
+        let _ = crate::process::run_piped("systemctl", &enable_args);
     }
 
     // linger
