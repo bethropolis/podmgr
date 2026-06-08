@@ -134,7 +134,7 @@ pub fn run_wizard(
             let packages: String =
                 dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
                     .with_prompt("Packages to install (space-separated)")
-                    .default("fish fastfetch btop".to_string())
+                    .default("fish fastfetch".to_string())
                     .interact_text()?;
             cfg.image.packages.install = packages
                 .split_whitespace()
