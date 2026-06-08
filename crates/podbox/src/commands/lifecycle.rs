@@ -241,11 +241,7 @@ fn find_stale_containers() -> Vec<String> {
         for entry in entries.flatten() {
             let path = entry.path();
             if path.extension().map(|e| e == "container").unwrap_or(false) {
-                let name = path
-                    .file_stem()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
+                let name = path.file_stem().unwrap().to_string_lossy().to_string();
                 let config_path = config_dir.join(format!("{}.toml", name));
 
                 if !config_path.exists() {
@@ -258,11 +254,7 @@ fn find_stale_containers() -> Vec<String> {
                         podbox::podman::ContainerState::Missing => stale.push(name),
                         podbox::podman::ContainerState::Stopped => {
                             if let Ok(output) = std::process::Command::new("systemctl")
-                                .args([
-                                    "--user",
-                                    "is-failed",
-                                    &format!("{}.service", name),
-                                ])
+                                .args(["--user", "is-failed", &format!("{}.service", name)])
                                 .output()
                             {
                                 if String::from_utf8_lossy(&output.stdout).trim() == "failed" {
@@ -322,10 +314,7 @@ pub fn run_remove_stale(dry_run: bool, force: bool) -> Result<()> {
             eprintln!("Warning: failed to uninstall '{}': {}", name, e);
         }
 
-        let _ = podbox::process::run_piped(
-            "podman",
-            &podbox::process::args(&["rm", "-f", name]),
-        );
+        let _ = podbox::process::run_piped("podman", &podbox::process::args(&["rm", "-f", name]));
 
         if which::which("systemctl").is_ok() {
             let unit_names = [

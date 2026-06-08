@@ -120,9 +120,7 @@ fn run() -> Result<()> {
 
     // Short-circuit for commands that don't need a full config load
     if let Command::FindDefinition { name } = &cli.command {
-        let lookup = name
-            .clone()
-            .or_else(|| target_name.clone());
+        let lookup = name.clone().or_else(|| target_name.clone());
         return commands::config::run_find_definition(lookup.as_deref());
     }
 
@@ -132,7 +130,10 @@ fn run() -> Result<()> {
         return commands::lifecycle::run_disable(&n);
     }
 
-    if let Command::Remove { stale: true, force, .. } = &cli.command {
+    if let Command::Remove {
+        stale: true, force, ..
+    } = &cli.command
+    {
         return commands::lifecycle::run_remove_stale(cli.dry_run, *force);
     }
 

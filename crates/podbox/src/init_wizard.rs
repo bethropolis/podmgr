@@ -109,16 +109,15 @@ pub fn run_wizard(
     // ── Phase 1: Image ──
     let (mut config, default_name) = match prompt_profile(profiles) {
         ProfileChoice::Named(profile, customize) => {
-            let mut cfg: Config = toml::from_str(&profile.toml)
-                .map_err(|e| anyhow::anyhow!("failed to parse profile '{}': {}", profile.name, e))?;
+            let mut cfg: Config = toml::from_str(&profile.toml).map_err(|e| {
+                anyhow::anyhow!("failed to parse profile '{}': {}", profile.name, e)
+            })?;
             if customize {
                 cfg = prompt_customize_profile(cfg)?;
             }
             (cfg, profile.name.clone())
         }
-        ProfileChoice::Custom => {
-            prompt_custom_image()?
-        }
+        ProfileChoice::Custom => prompt_custom_image()?,
     };
 
     // ── Phase 2: Container ──
@@ -130,8 +129,18 @@ pub fn run_wizard(
 
     let shell = prompt_shell(detected_shell);
     config.container.shell = shell.full_path.clone();
-    if !config.image.packages.install.iter().any(|p| p == &shell.package_name) {
-        config.image.packages.install.push(shell.package_name.clone());
+    if !config
+        .image
+        .packages
+        .install
+        .iter()
+        .any(|p| p == &shell.package_name)
+    {
+        config
+            .image
+            .packages
+            .install
+            .push(shell.package_name.clone());
     }
 
     if let Some(mem) = prompt_memory() {
@@ -151,8 +160,12 @@ pub fn run_wizard(
     config.integration.sync_icons = confirm_default("Sync icons from host?", true);
     config.integration.sync_fonts = confirm_default("Sync fonts from host?", true);
 
-    let (notify, clipboard, xdg_open, ssh_agent) =
-        prompt_integration_extras(config.integration.notify, config.integration.clipboard, config.integration.xdg_open, config.integration.ssh_agent);
+    let (notify, clipboard, xdg_open, ssh_agent) = prompt_integration_extras(
+        config.integration.notify,
+        config.integration.clipboard,
+        config.integration.xdg_open,
+        config.integration.ssh_agent,
+    );
     config.integration.notify = notify;
     config.integration.clipboard = clipboard;
     config.integration.xdg_open = xdg_open;
@@ -175,7 +188,11 @@ pub fn run_wizard(
         .map_err(|e| anyhow::anyhow!("failed to serialize config: {}", e))?;
     let confirmed = preview_and_confirm(&toml_str);
 
-    Ok(WizardResult { config, name, confirmed })
+    Ok(WizardResult {
+        config,
+        name,
+        confirmed,
+    })
 }
 
 // ── Phase 1 helpers ──
@@ -228,8 +245,13 @@ fn prompt_custom_image() -> anyhow::Result<(Config, String)> {
                 .interact_text()?;
         let mut c = Config::embedded();
         c.image.image_ref = Some(ref_str.clone());
-        c.image.base = ref_str.rsplit_once(':').map(|(_, t)| t).unwrap_or("latest").to_string();
-        let name = ref_str.rsplit_once('/')
+        c.image.base = ref_str
+            .rsplit_once(':')
+            .map(|(_, t)| t)
+            .unwrap_or("latest")
+            .to_string();
+        let name = ref_str
+            .rsplit_once('/')
             .map(|(_, n)| n.split_once(':').map(|(n, _)| n).unwrap_or(n))
             .unwrap_or("container")
             .to_string();
@@ -243,8 +265,13 @@ fn prompt_custom_image() -> anyhow::Result<(Config, String)> {
         let mut c = Config::embedded();
         c.image.base = base.clone();
         c.image.packages.manager = detect_package_manager(&base).to_string();
-        let name = base.split_once(':').map(|(n, _)| n).unwrap_or(&base)
-            .split('/').next_back().unwrap_or(&base)
+        let name = base
+            .split_once(':')
+            .map(|(n, _)| n)
+            .unwrap_or(&base)
+            .split('/')
+            .next_back()
+            .unwrap_or(&base)
             .to_string();
         (c, name)
     };
@@ -368,7 +395,11 @@ fn prompt_memory() -> Option<String> {
         .interact_text()
         .expect("failed to get memory input");
     let trimmed = input.trim().to_string();
-    if trimmed.is_empty() { None } else { Some(trimmed) }
+    if trimmed.is_empty() {
+        None
+    } else {
+        Some(trimmed)
+    }
 }
 
 fn prompt_extra_mounts() -> Vec<String> {
@@ -446,7 +477,12 @@ fn prompt_integration_extras(
         "xdg_open   (open URIs on host)",
         "ssh_agent  (SSH agent forwarding)",
     ];
-    let defaults = [default_notify, default_clipboard, default_xdg_open, default_ssh_agent];
+    let defaults = [
+        default_notify,
+        default_clipboard,
+        default_xdg_open,
+        default_ssh_agent,
+    ];
     let selections: Vec<usize> =
         dialoguer::MultiSelect::with_theme(&dialoguer::theme::ColorfulTheme::default())
             .with_prompt("Integration extras (space to toggle, enter to confirm)")
@@ -510,14 +546,21 @@ fn prompt_lifecycle() -> (bool, bool) {
 }
 
 fn prompt_on_stop() -> OnStop {
-    let items = ["keep  (container stays stopped until started again)", "remove  (auto-clean container on stop)"];
+    let items = [
+        "keep  (container stays stopped until started again)",
+        "remove  (auto-clean container on stop)",
+    ];
     let selection = dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
         .with_prompt("On-stop behavior")
         .items(&items)
         .default(0)
         .interact()
         .expect("failed to get on_stop selection");
-    if selection == 0 { OnStop::Keep } else { OnStop::Remove }
+    if selection == 0 {
+        OnStop::Keep
+    } else {
+        OnStop::Remove
+    }
 }
 
 fn prompt_auto_update(config: &Config) -> bool {
@@ -549,10 +592,26 @@ fn print_summary(config: &Config, name: &str) {
     };
     let lifecycle = if config.lifecycle.quadlet {
         let extras = vec![
-            if config.lifecycle.autostart { Some("autostart") } else { None },
-            if config.lifecycle.auto_update { Some("auto-update") } else { None },
-        ].into_iter().flatten().collect::<Vec<_>>().join(", ");
-        if extras.is_empty() { "quadlet".to_string() } else { format!("quadlet ({})", extras) }
+            if config.lifecycle.autostart {
+                Some("autostart")
+            } else {
+                None
+            },
+            if config.lifecycle.auto_update {
+                Some("auto-update")
+            } else {
+                None
+            },
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>()
+        .join(", ");
+        if extras.is_empty() {
+            "quadlet".to_string()
+        } else {
+            format!("quadlet ({})", extras)
+        }
     } else {
         "manual".to_string()
     };
@@ -574,7 +633,10 @@ fn print_summary(config: &Config, name: &str) {
         config.integration.xdg_dirs.videos,
         config.integration.xdg_dirs.desktop,
         config.integration.xdg_dirs.projects,
-    ].iter().filter(|&&b| b).count();
+    ]
+    .iter()
+    .filter(|&&b| b)
+    .count();
 
     println!("\n── Summary ──");
     println!("  Name:        {}", name);
@@ -585,33 +647,82 @@ fn print_summary(config: &Config, name: &str) {
         println!("  Memory:      {}", mem);
     }
     if !config.container.mounts.extra.is_empty() {
-        println!("  Mounts:      {}", config.container.mounts.extra.join(", "));
+        println!(
+            "  Mounts:      {}",
+            config.container.mounts.extra.join(", ")
+        );
     }
     println!("  Integration:");
-    println!("    wayland: {}, audio: {}, dbus: {}, gpu: {}", config.integration.wayland, config.integration.audio, config.integration.dbus, gpu);
+    println!(
+        "    wayland: {}, audio: {}, dbus: {}, gpu: {}",
+        config.integration.wayland, config.integration.audio, config.integration.dbus, gpu
+    );
     let extras = vec![
-        if config.integration.notify { Some("notify") } else { None },
-        if config.integration.clipboard { Some("clipboard") } else { None },
-        if config.integration.xdg_open { Some("xdg_open") } else { None },
-        if config.integration.ssh_agent { Some("ssh_agent") } else { None },
-    ].into_iter().flatten().collect::<Vec<_>>();
+        if config.integration.notify {
+            Some("notify")
+        } else {
+            None
+        },
+        if config.integration.clipboard {
+            Some("clipboard")
+        } else {
+            None
+        },
+        if config.integration.xdg_open {
+            Some("xdg_open")
+        } else {
+            None
+        },
+        if config.integration.ssh_agent {
+            Some("ssh_agent")
+        } else {
+            None
+        },
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>();
     if !extras.is_empty() {
         println!("    extras:    {}", extras.join(", "));
     }
-    if config.integration.sync_themes || config.integration.sync_icons || config.integration.sync_fonts {
+    if config.integration.sync_themes
+        || config.integration.sync_icons
+        || config.integration.sync_fonts
+    {
         let sync = vec![
-            if config.integration.sync_themes { Some("themes") } else { None },
-            if config.integration.sync_icons { Some("icons") } else { None },
-            if config.integration.sync_fonts { Some("fonts") } else { None },
-        ].into_iter().flatten().collect::<Vec<_>>();
+            if config.integration.sync_themes {
+                Some("themes")
+            } else {
+                None
+            },
+            if config.integration.sync_icons {
+                Some("icons")
+            } else {
+                None
+            },
+            if config.integration.sync_fonts {
+                Some("fonts")
+            } else {
+                None
+            },
+        ]
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
         println!("    sync:      {}", sync.join(", "));
     }
     println!("    xdg dirs:  {} shared", xdg_count);
     if !config.integration.export.apps.is_empty() {
-        println!("    exports:   apps: {}", config.integration.export.apps.join(", "));
+        println!(
+            "    exports:   apps: {}",
+            config.integration.export.apps.join(", ")
+        );
     }
     if !config.integration.export.bins.is_empty() {
-        println!("               bins: {}", config.integration.export.bins.join(", "));
+        println!(
+            "               bins: {}",
+            config.integration.export.bins.join(", ")
+        );
     }
     println!("  Lifecycle:   {} (on_stop: {})", lifecycle, on_stop);
     println!();
@@ -716,7 +827,13 @@ home = "~/containers/testenv"
             detected: true,
         };
         apply_shell_defaults(&mut cfg, &shell);
-        let fish_count = cfg.image.packages.install.iter().filter(|s| s.as_str() == "fish").count();
+        let fish_count = cfg
+            .image
+            .packages
+            .install
+            .iter()
+            .filter(|s| s.as_str() == "fish")
+            .count();
         assert_eq!(fish_count, 1);
     }
 
@@ -747,7 +864,10 @@ home = "~/containers/testenv"
     fn detect_package_manager_dnf() {
         assert_eq!(detect_package_manager("fedora:44"), "dnf");
         assert_eq!(detect_package_manager("centos:stream"), "dnf");
-        assert_eq!(detect_package_manager("registry.fedoraproject.org/fedora:41"), "dnf");
+        assert_eq!(
+            detect_package_manager("registry.fedoraproject.org/fedora:41"),
+            "dnf"
+        );
     }
 
     #[test]
