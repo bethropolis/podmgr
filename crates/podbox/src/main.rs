@@ -33,7 +33,9 @@ fn extract_positional_name(cmd: &Command) -> Option<String> {
         | Command::Status { name }
         | Command::Remove { name, .. }
         | Command::Logs { name, .. }
-        | Command::Update { name, .. } => name.clone(),
+        | Command::Update { name, .. }
+        | Command::Diff { name, .. }
+        | Command::FindDefinition { name } => name.clone(),
         _ => None,
     }
 }
@@ -71,10 +73,6 @@ fn run() -> Result<()> {
     let cli = Cli::parse();
 
     match &cli.command {
-        Command::FindDefinition => {
-            return commands::config::run_find_definition();
-        }
-
         Command::Completions { shell } => {
             return commands::config::run_completions((*shell).into());
         }
@@ -119,6 +117,14 @@ fn run() -> Result<()> {
         .or_else(|| cli.container.clone())
         .or_else(|| std::env::var("PODBOX_CONTAINER").ok())
         .or_else(config::read_active_context);
+
+    // Short-circuit for commands that don't need a full config load
+    if let Command::FindDefinition { name } = &cli.command {
+        let lookup = name
+            .clone()
+            .or_else(|| target_name.clone());
+        return commands::config::run_find_definition(lookup.as_deref());
+    }
 
     // Load config for all other commands
     let mut config = if let Some(ref path) = cli.config {
@@ -242,7 +248,7 @@ fn run() -> Result<()> {
             commands::runtime::run_logs(&name, *follow, *tail, since.clone(), cli.dry_run)?;
         }
 
-        Command::Diff { apply } => {
+        Command::Diff { apply, .. } => {
             commands::diff::run_diff(&config, &name, &env.username, *apply)?;
         }
 
@@ -282,7 +288,7 @@ fn run() -> Result<()> {
             commands::config::run_translate_path(&config, &xdg, *to_container, *to_host, path)?;
         }
 
-        Command::FindDefinition
+        Command::FindDefinition { .. }
         | Command::Completions { .. }
         | Command::Init { .. }
         | Command::Create { .. }

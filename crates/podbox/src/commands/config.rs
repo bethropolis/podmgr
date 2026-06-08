@@ -9,10 +9,20 @@ use podbox::error::PodboxError;
 use podbox::xdg::ResolvedXdgDirs;
 
 /// Print the path to the definition file.
-pub fn run_find_definition() -> Result<()> {
-    match config::find_definition() {
-        Some(path) => println!("{}", path.display()),
-        None => println!("(embedded default)"),
+pub fn run_find_definition(name: Option<&str>) -> Result<()> {
+    match name {
+        Some(n) => {
+            let path = config::config_dir().join(format!("{}.toml", n));
+            if path.exists() {
+                println!("{}", path.display());
+            } else {
+                println!("(no config found for '{}')", n);
+            }
+        }
+        None => match config::find_definition() {
+            Some(path) => println!("{}", path.display()),
+            None => println!("(embedded default)"),
+        },
     }
     Ok(())
 }

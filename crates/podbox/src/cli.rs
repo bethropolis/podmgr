@@ -200,6 +200,8 @@ pub enum Command {
 
     /// Compare declared packages against the running container.
     Diff {
+        /// Container name (overrides auto-detection / active context).
+        name: Option<String>,
         /// Update the config TOML's install list to match the container.
         #[arg(long)]
         apply: bool,
@@ -215,7 +217,10 @@ pub enum Command {
     },
 
     /// Find the definition file that would be used.
-    FindDefinition,
+    FindDefinition {
+        /// Container name (overrides auto-detection / active context).
+        name: Option<String>,
+    },
 
     /// Translate a path between host and container.
     #[command(group(
