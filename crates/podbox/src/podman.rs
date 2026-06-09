@@ -77,7 +77,14 @@ pub fn image_exists(tag: &str) -> anyhow::Result<bool> {
 /// Fetch OCI labels for a local image.
 pub fn image_labels(tag: &str) -> anyhow::Result<std::collections::HashMap<String, String>> {
     let output = std::process::Command::new("podman")
-        .args(["inspect", "--format", "{{json .Labels}}", tag])
+        .args([
+            "inspect",
+            "--type",
+            "image",
+            "--format",
+            "{{json .Labels}}",
+            tag,
+        ])
         .output()?;
     if !output.status.success() {
         return Ok(std::collections::HashMap::new());
@@ -95,7 +102,14 @@ pub fn image_labels(tag: &str) -> anyhow::Result<std::collections::HashMap<Strin
 /// and returns `Stopped` when the unit exists but is inactive.
 pub fn query_state(name: &str) -> anyhow::Result<ContainerState> {
     let output = Command::new("podman")
-        .args(["inspect", "--format", "{{.State.Status}}", name])
+        .args([
+            "inspect",
+            "--type",
+            "container",
+            "--format",
+            "{{.State.Status}}",
+            name,
+        ])
         .output()?;
 
     if !output.status.success() {
