@@ -133,9 +133,12 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         // the host socket server.
         let socket_unit = format!("{}.socket", name);
         let host_unit = format!("{}-host.service", name);
-        // Stop socket first so re-enable doesn't hit stale FD state (Issue #2).
+        // Stop socket and host service first so re-enable doesn't hit stale state (Issue #2).
         let _ = crate::process::run_piped("systemctl", &vec![
             "--user".into(), "stop".into(), socket_unit.clone().into(),
+        ]);
+        let _ = crate::process::run_piped("systemctl", &vec![
+            "--user".into(), "stop".into(), host_unit.clone().into(),
         ]);
         let enable_args: Vec<std::ffi::OsString> = vec![
             "--user".into(),
@@ -206,6 +209,9 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         let host_unit = format!("{}-host.service", name);
         let _ = crate::process::run_piped("systemctl", &vec![
             "--user".into(), "stop".into(), socket_unit.clone().into(),
+        ]);
+        let _ = crate::process::run_piped("systemctl", &vec![
+            "--user".into(), "stop".into(), host_unit.clone().into(),
         ]);
         let enable_args: Vec<std::ffi::OsString> = vec![
             "--user".into(),
