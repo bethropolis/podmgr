@@ -20,6 +20,8 @@ notify = true
 clipboard = true
 xdg_open = true
 dbus = true
+ssh_agent = true
+gpg_agent = true
 sync_themes = true
 sync_icons = true
 sync_fonts = true
@@ -32,6 +34,9 @@ music = true
 videos = true
 desktop = true
 projects = true
+
+[dbus]
+preset = "gnome"
 
 [lifecycle]
 quadlet = true
