@@ -134,12 +134,14 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         let socket_unit = format!("{}.socket", name);
         let host_unit = format!("{}-host.service", name);
         // Stop socket and host service first so re-enable doesn't hit stale state (Issue #2).
-        let _ = crate::process::run_piped("systemctl", &[
-            "--user".into(), "stop".into(), socket_unit.clone().into(),
-        ]);
-        let _ = crate::process::run_piped("systemctl", &[
-            "--user".into(), "stop".into(), host_unit.clone().into(),
-        ]);
+        let _ = crate::process::run_piped(
+            "systemctl",
+            &["--user".into(), "stop".into(), socket_unit.clone().into()],
+        );
+        let _ = crate::process::run_piped(
+            "systemctl",
+            &["--user".into(), "stop".into(), host_unit.clone().into()],
+        );
         let enable_args: Vec<std::ffi::OsString> = vec![
             "--user".into(),
             "enable".into(),
@@ -148,9 +150,10 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         ];
         let _ = crate::process::run_piped("systemctl", &enable_args);
         // Start host service so config changes take effect immediately (Issue #3).
-        let _ = crate::process::run_piped("systemctl", &[
-            "--user".into(), "start".into(), host_unit.into(),
-        ]);
+        let _ = crate::process::run_piped(
+            "systemctl",
+            &["--user".into(), "start".into(), host_unit.into()],
+        );
     } else {
         // 5.5 fallback: copy files manually
         std::fs::create_dir_all(&qdir)?;
@@ -207,12 +210,14 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
 
         let socket_unit = format!("{}.socket", name);
         let host_unit = format!("{}-host.service", name);
-        let _ = crate::process::run_piped("systemctl", &[
-            "--user".into(), "stop".into(), socket_unit.clone().into(),
-        ]);
-        let _ = crate::process::run_piped("systemctl", &[
-            "--user".into(), "stop".into(), host_unit.clone().into(),
-        ]);
+        let _ = crate::process::run_piped(
+            "systemctl",
+            &["--user".into(), "stop".into(), socket_unit.clone().into()],
+        );
+        let _ = crate::process::run_piped(
+            "systemctl",
+            &["--user".into(), "stop".into(), host_unit.clone().into()],
+        );
         let enable_args: Vec<std::ffi::OsString> = vec![
             "--user".into(),
             "enable".into(),
@@ -220,9 +225,10 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
             socket_unit.into(),
         ];
         let _ = crate::process::run_piped("systemctl", &enable_args);
-        let _ = crate::process::run_piped("systemctl", &[
-            "--user".into(), "start".into(), host_unit.into(),
-        ]);
+        let _ = crate::process::run_piped(
+            "systemctl",
+            &["--user".into(), "start".into(), host_unit.into()],
+        );
     }
 
     // linger

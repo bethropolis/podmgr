@@ -29,7 +29,10 @@ pub fn run_snapshot(_config: &Config, name: &str, tag: Option<&str>) -> Result<(
     let container_name = format!("podbox-{}", name);
     let image_tag = snapshot_tag(&tag, name);
 
-    eprintln!("Snapshotting container '{}' as '{}'...", container_name, image_tag);
+    eprintln!(
+        "Snapshotting container '{}' as '{}'...",
+        container_name, image_tag
+    );
 
     let output = podbox::process::run_piped(
         "podman",

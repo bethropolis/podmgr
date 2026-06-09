@@ -75,12 +75,22 @@ pub fn resolve() -> Result<HostEnv> {
         .filter(|s| !s.is_empty());
 
     let gpg_home = env::var("GNUPGHOME").ok().map(PathBuf::from).or_else(|| {
-        let fallback = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/root")).join(".gnupg");
-        if fallback.exists() { Some(fallback) } else { None }
+        let fallback = dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/root"))
+            .join(".gnupg");
+        if fallback.exists() {
+            Some(fallback)
+        } else {
+            None
+        }
     });
     let gpg_agent_socket = gpg_home.as_ref().and_then(|gpg| {
         let sock = gpg.join("S.gpg-agent");
-        if sock.exists() { Some(sock) } else { None }
+        if sock.exists() {
+            Some(sock)
+        } else {
+            None
+        }
     });
 
     Ok(HostEnv {

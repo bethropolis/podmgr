@@ -245,7 +245,10 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     // GPG agent
     if config.integration.gpg_agent {
         if let Some(ref sock) = env.gpg_agent_socket {
-            lines.push(format!("Volume={}:/run/podbox/gnupg/S.gpg-agent:ro", sock.display()));
+            lines.push(format!(
+                "Volume={}:/run/podbox/gnupg/S.gpg-agent:ro",
+                sock.display()
+            ));
             lines.push("Environment=GPG_TTY=/dev/pts/0".into());
             lines.push("Environment=GNUPGHOME=/run/podbox/gnupg".into());
         } else {

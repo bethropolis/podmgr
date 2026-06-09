@@ -476,10 +476,7 @@ fn dbus_preset_talk(preset: &str) -> &[&str] {
             "org.gnome.keyring.*",
             "org.freedesktop.portal.*",
         ],
-        "kde" => &[
-            "org.kde.*",
-            "org.freedesktop.portal.*",
-        ],
+        "kde" => &["org.kde.*", "org.freedesktop.portal.*"],
         "portal" => &[
             "org.freedesktop.portal.*",
             "org.freedesktop.portal.FileChooser",
@@ -775,10 +772,7 @@ fn is_default_dbus(v: &DbusConfig) -> bool {
 }
 
 fn is_default_security(v: &SecurityConfig) -> bool {
-    v.apparmor.is_none()
-        && v.seccomp.is_none()
-        && v.security_label_disable
-        && !v.no_new_privileges
+    v.apparmor.is_none() && v.seccomp.is_none() && v.security_label_disable && !v.no_new_privileges
 }
 
 /// Expand a leading `~` in a path to the user's home directory.

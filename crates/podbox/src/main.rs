@@ -77,9 +77,7 @@ fn run() -> Result<()> {
 
     // Exit early if podman is not installed — clean error instead of a cryptic
     // spawn failure deep in the stack.
-    if !matches!(&cli.command, Command::Completions { .. })
-        && which::which("podman").is_err()
-    {
+    if !matches!(&cli.command, Command::Completions { .. }) && which::which("podman").is_err() {
         return Err(PodboxError::PodmanNotFound.into());
     }
 
@@ -109,14 +107,24 @@ fn run() -> Result<()> {
             packages,
             no_start,
         } => {
-            return commands::config::run_create(cli.dry_run, image, name.as_deref(), packages.as_deref(), *no_start);
+            return commands::config::run_create(
+                cli.dry_run,
+                image,
+                name.as_deref(),
+                packages.as_deref(),
+                *no_start,
+            );
         }
 
         Command::List => {
             return commands::config::run_list();
         }
 
-        Command::Clone { src, dst, copy_home } => {
+        Command::Clone {
+            src,
+            dst,
+            copy_home,
+        } => {
             return commands::config::run_clone(src, dst, *copy_home, cli.dry_run);
         }
 
@@ -183,21 +191,19 @@ fn run() -> Result<()> {
         let config_list = config::list_configs();
 
         // No configs at all — welcome the user and offer the wizard
-        if config_list.is_empty() && config::find_definition().is_none()
+        if config_list.is_empty()
+            && config::find_definition().is_none()
             && nix::unistd::isatty(0).unwrap_or(false)
         {
             eprintln!("Welcome to podbox! It looks like you don't have any containers set up yet.");
-            let launch = dialoguer::Confirm::with_theme(
-                &dialoguer::theme::ColorfulTheme::default(),
-            )
-            .with_prompt("Would you like to run the interactive setup wizard?")
-            .default(true)
-            .interact()
-            .unwrap_or(false);
+            let launch =
+                dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                    .with_prompt("Would you like to run the interactive setup wizard?")
+                    .default(true)
+                    .interact()
+                    .unwrap_or(false);
             if launch {
-                commands::config::run_init(
-                    cli.dry_run, None, None, true, None,
-                )?;
+                commands::config::run_init(cli.dry_run, None, None, true, None)?;
                 return Ok(());
             }
         }

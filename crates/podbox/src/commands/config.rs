@@ -562,7 +562,13 @@ pub fn run_use(name: Option<String>, clear: bool, dry_run: bool) -> Result<()> {
 }
 
 /// Create a container: pull profile/image, build, install Quadlet, and start.
-pub fn run_create(dry_run: bool, image: &str, name: Option<&str>, packages: Option<&str>, no_start: bool) -> Result<()> {
+pub fn run_create(
+    dry_run: bool,
+    image: &str,
+    name: Option<&str>,
+    packages: Option<&str>,
+    no_start: bool,
+) -> Result<()> {
     let is_profile = !image.contains('/') && !image.contains('\\');
 
     if is_profile && podbox::profiles::find(image).is_some() {
@@ -709,10 +715,18 @@ pub fn run_clone(src: &str, dst: &str, copy_home: bool, dry_run: bool) -> Result
     let dst_path = config_dir.join(format!("{}.toml", dst));
 
     if !src_path.exists() {
-        anyhow::bail!("Source config '{}' not found at {}", src, src_path.display());
+        anyhow::bail!(
+            "Source config '{}' not found at {}",
+            src,
+            src_path.display()
+        );
     }
     if dst_path.exists() {
-        anyhow::bail!("Destination config '{}' already exists at {}", dst, dst_path.display());
+        anyhow::bail!(
+            "Destination config '{}' already exists at {}",
+            dst,
+            dst_path.display()
+        );
     }
 
     if dry_run {
@@ -760,7 +774,10 @@ pub fn run_clone(src: &str, dst: &str, copy_home: bool, dry_run: bool) -> Result
             }
             println!("Home directory copied.");
         } else {
-            eprintln!("Warning: source home '{}' does not exist, skipping copy.", home.display());
+            eprintln!(
+                "Warning: source home '{}' does not exist, skipping copy.",
+                home.display()
+            );
         }
     }
 
