@@ -182,6 +182,9 @@ podbox export app firefox
 # Export a binary to ~/.local/bin
 podbox export bin rg
 
+# Run a command on the host from inside the container (requires host_exec = true)
+podbox exec -- host-exec echo "hello from host"
+
 # Check container status
 podbox status myenv
 

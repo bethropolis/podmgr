@@ -121,3 +121,29 @@ binaries.
 Each interceptor opens a **direct, ephemeral** Unix socket connection to
 the host socket (not the daemon's persistent connection), sends its
 message, and waits for acknowledgement before exiting.
+
+### Host-exec security
+
+Host-exec is **disabled by default**. When enabled via `[integration.host_exec]`, the host validates every command:
+
+1. **Allowlist** — If configured, only commands whose aliases appear in the map may be run. The mapped host path is used (guest `$PATH` is ignored). Example error:
+   ```
+   Permission denied: 'ls' is not in the host-exec allowlist
+   Allowed commands: systemctl, git
+   ```
+
+2. **Shell metacharacters** — Arguments containing `;`, `|`, `&`, `$`, or `` ` `` are rejected:
+   ```
+   host-exec: failed to execute 'echo $HOME': No such file or directory
+   ```
+
+3. **Dangerous flag patterns** — Arguments matching `--exec-path`, `--config`, `-o`, etc. are blocked:
+   ```
+   Security violation: argument "--exec-path=/tmp/x" uses a restricted flag pattern
+   ```
+
+4. **Absolute path bypass** — Using `/usr/bin/git` when the allowlist key is `git` is rejected:
+   ```
+   Permission denied: '/usr/bin/git' is not in the host-exec allowlist
+   Allowed commands: systemctl, git
+   ```
