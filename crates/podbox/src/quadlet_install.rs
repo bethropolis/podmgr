@@ -132,6 +132,11 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         // The socket has Service=<name>-host.service, so this also triggers
         // the host socket server.
         let socket_unit = format!("{}.socket", name);
+        let host_unit = format!("{}-host.service", name);
+        // Stop socket first so re-enable doesn't hit stale FD state (Issue #2).
+        let _ = crate::process::run_piped("systemctl", &vec![
+            "--user".into(), "stop".into(), socket_unit.clone().into(),
+        ]);
         let enable_args: Vec<std::ffi::OsString> = vec![
             "--user".into(),
             "enable".into(),
@@ -139,6 +144,10 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
             socket_unit.into(),
         ];
         let _ = crate::process::run_piped("systemctl", &enable_args);
+        // Restart host service so config changes take effect immediately (Issue #3).
+        let _ = crate::process::run_piped("systemctl", &vec![
+            "--user".into(), "try-restart".into(), host_unit.into(),
+        ]);
     } else {
         // 5.5 fallback: copy files manually
         std::fs::create_dir_all(&qdir)?;
@@ -194,6 +203,10 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         let _ = crate::process::run_piped("systemctl", &reset_args);
 
         let socket_unit = format!("{}.socket", name);
+        let host_unit = format!("{}-host.service", name);
+        let _ = crate::process::run_piped("systemctl", &vec![
+            "--user".into(), "stop".into(), socket_unit.clone().into(),
+        ]);
         let enable_args: Vec<std::ffi::OsString> = vec![
             "--user".into(),
             "enable".into(),
@@ -201,6 +214,9 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
             socket_unit.into(),
         ];
         let _ = crate::process::run_piped("systemctl", &enable_args);
+        let _ = crate::process::run_piped("systemctl", &vec![
+            "--user".into(), "try-restart".into(), host_unit.into(),
+        ]);
     }
 
     // linger

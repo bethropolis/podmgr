@@ -303,10 +303,15 @@ fn handle_connection(stream: &mut UnixStream, config: &IntegrationConfig) -> any
                         write_frame(stream, &HostMessage::HostExecDone { exit_code: code })?;
                     }
                     Err(e) => {
+                        let msg = if e.kind() == std::io::ErrorKind::NotFound {
+                            format!("host-exec: '{}' not found in allowlist path or host $PATH", cmd)
+                        } else {
+                            format!("host-exec: failed to execute '{}': {}", cmd, e)
+                        };
                         write_frame(
                             stream,
                             &HostMessage::HostExecStderr {
-                                data: format!("host-exec: failed to execute '{}': {}", cmd, e),
+                                data: msg,
                             },
                         )?;
                         write_frame(stream, &HostMessage::HostExecDone { exit_code: 1 })?;

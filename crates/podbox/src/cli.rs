@@ -133,6 +133,21 @@ pub enum Command {
         stale: bool,
     },
 
+    /// Inspect container configuration, generated Quadlet, or computed environment.
+    Inspect {
+        /// Container name (overrides auto-detection / active context).
+        name: Option<String>,
+        /// Show the resolved TOML config.
+        #[arg(long)]
+        config: bool,
+        /// Show the generated Quadlet (.container file).
+        #[arg(long)]
+        quadlet: bool,
+        /// Show the computed environment variables.
+        #[arg(long)]
+        env: bool,
+    },
+
     /// Run the host socket server (socket-activated by systemd).
     Serve {
         /// Container name to serve.
@@ -152,6 +167,9 @@ pub enum Command {
         /// Override the container name.
         #[arg(long, short)]
         name: Option<String>,
+        /// Comma-separated list of packages to install (e.g. "fastfetch,btop").
+        #[arg(long, short)]
+        packages: Option<String>,
         /// Skip starting the container after setup.
         #[arg(long)]
         no_start: bool,
@@ -159,6 +177,17 @@ pub enum Command {
 
     /// List all managed containers.
     List,
+
+    /// Clone an existing container config to a new name.
+    Clone {
+        /// Source container name.
+        src: String,
+        /// Destination container name.
+        dst: String,
+        /// Also copy the home directory contents.
+        #[arg(long)]
+        copy_home: bool,
+    },
 
     /// Initialize a new container config.
     Init {
@@ -211,6 +240,23 @@ pub enum Command {
         /// Update the config TOML's install list to match the container.
         #[arg(long)]
         apply: bool,
+    },
+
+    /// Snapshot the current container state as a tagged image.
+    Snapshot {
+        /// Container name (overrides auto-detection / active context).
+        name: Option<String>,
+        /// Snapshot tag (defaults to timestamp).
+        #[arg(long, short)]
+        tag: Option<String>,
+    },
+
+    /// Restore a container from a snapshot.
+    Restore {
+        /// Tag of the snapshot to restore.
+        tag: String,
+        /// Container name (overrides auto-detection / active context).
+        name: Option<String>,
     },
 
     /// Set or show active context.

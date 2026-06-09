@@ -35,6 +35,9 @@ fn extract_positional_name(cmd: &Command) -> Option<String> {
         | Command::Logs { name, .. }
         | Command::Update { name, .. }
         | Command::Diff { name, .. }
+        | Command::Snapshot { name, .. }
+        | Command::Restore { name, .. }
+        | Command::Inspect { name, .. }
         | Command::FindDefinition { name } => name.clone(),
         _ => None,
     }
@@ -95,13 +98,18 @@ fn run() -> Result<()> {
         Command::Create {
             image,
             name,
+            packages,
             no_start,
         } => {
-            return commands::config::run_create(cli.dry_run, image, name.as_deref(), *no_start);
+            return commands::config::run_create(cli.dry_run, image, name.as_deref(), packages.as_deref(), *no_start);
         }
 
         Command::List => {
             return commands::config::run_list();
+        }
+
+        Command::Clone { src, dst, copy_home } => {
+            return commands::config::run_clone(src, dst, *copy_home, cli.dry_run);
         }
 
         Command::Use { name, clear } => {
@@ -263,6 +271,31 @@ fn run() -> Result<()> {
             commands::diff::run_diff(&config, &name, &env.username, *apply)?;
         }
 
+        Command::Snapshot { tag, .. } => {
+            commands::lifecycle::run_snapshot(&config, &name, tag.as_deref())?;
+        }
+
+        Command::Restore { tag, .. } => {
+            commands::lifecycle::run_restore(&config, &name, tag)?;
+        }
+
+        Command::Inspect {
+            config: show_config,
+            quadlet: show_quadlet,
+            env: show_env,
+            ..
+        } => {
+            commands::config::run_inspect(
+                &config,
+                &name,
+                &env,
+                &xdg,
+                *show_config,
+                *show_quadlet,
+                *show_env,
+            )?;
+        }
+
         Command::Export { export_cmd } => {
             commands::config::run_export(&name, Some(&config), export_cmd)?;
         }
@@ -304,6 +337,7 @@ fn run() -> Result<()> {
         | Command::Completions { .. }
         | Command::Init { .. }
         | Command::Create { .. }
+        | Command::Clone { .. }
         | Command::List
         | Command::Use { .. } => unreachable!(),
     }

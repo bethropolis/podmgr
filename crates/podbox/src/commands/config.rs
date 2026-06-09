@@ -4,7 +4,9 @@ use anyhow::{Context, Result};
 use clap_complete::generate;
 
 use podbox::cli::{Cli, ExportCommand};
+use podbox::codegen::quadlet;
 use podbox::config::{self, Config};
+use podbox::env::HostEnv;
 use podbox::error::PodboxError;
 use podbox::xdg::ResolvedXdgDirs;
 
@@ -372,6 +374,11 @@ fn finish_create(cfg: &Config, container_name: &str, dry_run: bool, no_start: bo
         println!("Run `podbox shell` to enter.");
     }
 
+    // Set active context so the user can run `podbox exec` immediately.
+    if !dry_run {
+        let _ = config::write_active_context(container_name);
+    }
+
     Ok(())
 }
 
@@ -555,7 +562,7 @@ pub fn run_use(name: Option<String>, clear: bool, dry_run: bool) -> Result<()> {
 }
 
 /// Create a container: pull profile/image, build, install Quadlet, and start.
-pub fn run_create(dry_run: bool, image: &str, name: Option<&str>, no_start: bool) -> Result<()> {
+pub fn run_create(dry_run: bool, image: &str, name: Option<&str>, packages: Option<&str>, no_start: bool) -> Result<()> {
     let is_profile = !image.contains('/') && !image.contains('\\');
 
     if is_profile && podbox::profiles::find(image).is_some() {
@@ -568,6 +575,13 @@ pub fn run_create(dry_run: bool, image: &str, name: Option<&str>, no_start: bool
 
         let mut cfg = Config::parse(&profile_content)?;
         podbox::init_wizard::apply_shell_defaults(&mut cfg, &shell_info);
+        if let Some(pkgs) = packages {
+            for pkg in pkgs.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                if !cfg.image.packages.install.contains(&pkg.to_string()) {
+                    cfg.image.packages.install.push(pkg.to_string());
+                }
+            }
+        }
         let container_name = name.unwrap_or(&cfg.container.name).to_string();
         cfg.container.name = container_name.clone();
         cfg.image.name = container_name.clone();
@@ -652,6 +666,13 @@ pub fn run_create(dry_run: bool, image: &str, name: Option<&str>, no_start: bool
         cfg.image.packages.manager = detect_package_manager(image).to_string();
         cfg.container.shell.clear();
         podbox::init_wizard::apply_shell_defaults(&mut cfg, &shell_info);
+        if let Some(pkgs) = packages {
+            for pkg in pkgs.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
+                if !cfg.image.packages.install.contains(&pkg.to_string()) {
+                    cfg.image.packages.install.push(pkg.to_string());
+                }
+            }
+        }
         cfg.validate()?;
 
         let config_dir = config::config_dir();
@@ -678,5 +699,141 @@ pub fn run_create(dry_run: bool, image: &str, name: Option<&str>, no_start: bool
         "Run `podbox init {} --name <name>` to create a config (e.g. --name {}).",
         image, suggested
     );
+    Ok(())
+}
+
+/// Clone an existing container config to a new name.
+pub fn run_clone(src: &str, dst: &str, copy_home: bool, dry_run: bool) -> Result<()> {
+    let config_dir = config::config_dir();
+    let src_path = config_dir.join(format!("{}.toml", src));
+    let dst_path = config_dir.join(format!("{}.toml", dst));
+
+    if !src_path.exists() {
+        anyhow::bail!("Source config '{}' not found at {}", src, src_path.display());
+    }
+    if dst_path.exists() {
+        anyhow::bail!("Destination config '{}' already exists at {}", dst, dst_path.display());
+    }
+
+    if dry_run {
+        println!("Would clone '{}' to '{}'", src, dst);
+        if copy_home {
+            println!("Would also copy home directory contents.");
+        }
+        return Ok(());
+    }
+
+    let content = std::fs::read_to_string(&src_path)?;
+    let mut cfg: Config = toml::from_str(&content)
+        .map_err(|e| anyhow::anyhow!("Failed to parse '{}': {}", src_path.display(), e))?;
+
+    let new_home = dirs::home_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("~"))
+        .join("containers")
+        .join(dst);
+    cfg.image.name = dst.to_string();
+    cfg.container.name = dst.to_string();
+    cfg.container.home = new_home.clone();
+
+    let new_content = toml::to_string_pretty(&cfg)?;
+    std::fs::write(&dst_path, &new_content)?;
+    println!("Created config: {}", dst_path.display());
+
+    if copy_home {
+        let home = dirs::home_dir()
+            .unwrap_or_else(|| std::path::PathBuf::from("~"))
+            .join("containers")
+            .join(src);
+        if home.exists() {
+            let entries = std::fs::read_dir(&home).map(|e| e.count()).unwrap_or(0);
+            if entries > 500 {
+                eprintln!(
+                    "Warning: source home has {} items. Copying may take a while.",
+                    entries
+                );
+            }
+            let status = std::process::Command::new("cp")
+                .args(["-a", &home.to_string_lossy(), &new_home.to_string_lossy()])
+                .status()?;
+            if !status.success() {
+                anyhow::bail!("Failed to copy home directory contents.");
+            }
+            println!("Home directory copied.");
+        } else {
+            eprintln!("Warning: source home '{}' does not exist, skipping copy.", home.display());
+        }
+    }
+
+    println!();
+    println!("Cloned '{}' → '{}'", src, dst);
+    println!("Run `podbox build {}` to build and start.", dst);
+    Ok(())
+}
+
+/// Inspect container config, Quadlet, or computed env.
+pub fn run_inspect(
+    config: &Config,
+    name: &str,
+    env: &HostEnv,
+    xdg: &ResolvedXdgDirs,
+    show_config: bool,
+    show_quadlet: bool,
+    show_env: bool,
+) -> Result<()> {
+    let all = !show_config && !show_quadlet && !show_env;
+
+    if all || show_config {
+        println!("--- Config ---");
+        let toml_str = toml::to_string_pretty(config)?;
+        println!("{}", toml_str);
+    }
+
+    if all || show_quadlet {
+        println!("--- Quadlet (.container) ---");
+        let q = quadlet::generate_container(config, env, xdg);
+        println!("{}", q);
+        println!();
+        println!("--- Quadlet (.socket) ---");
+        let s = quadlet::generate_socket(config);
+        println!("{}", s);
+    }
+
+    if all || show_env {
+        println!("--- Environment ---");
+        println!("Container name:  {}", config.container.name);
+        let image_ref = match config.image.source() {
+            podbox::config::ImageSource::Build { base } => format!("build:{}", base),
+            podbox::config::ImageSource::Prebuilt { ref_str } => ref_str.clone(),
+        };
+        println!("Image ref:       {}", image_ref);
+        println!("Image source:    {:?}", config.image.source());
+        println!("Quadlet:         {}", config.lifecycle.quadlet);
+        println!("Auto-start:      {}", config.lifecycle.autostart);
+        println!("Auto-update:     {}", config.lifecycle.auto_update);
+        println!();
+        println!("XDG_RUNTIME_DIR: {}", env.xdg_runtime_dir.display());
+        if let Some(ref w) = env.wayland_display {
+            println!("WAYLAND_DISPLAY: {}", w);
+        }
+        if env.gpu_has_dri {
+            println!("GPU (DRI):       yes");
+        }
+        if env.gpu_has_nvidia {
+            println!("GPU (NVIDIA):    yes");
+        }
+        if let Some(ref dbus) = env.dbus_socket {
+            println!("D-Bus socket:    {}", dbus.display());
+        }
+        if env.gpg_agent_socket.is_some() {
+            println!("GPG agent:       available");
+        }
+        if let Some(ref shell) = env.host_shell {
+            println!("Host shell:      {}", shell);
+        }
+        if let Some(ref locale) = env.host_locale {
+            println!("Host locale:     {}", locale);
+        }
+    }
+
     Ok(())
 }

@@ -295,6 +295,10 @@ pub struct IntegrationConfig {
     pub host_exec: HostExecConfig,
     #[serde(default, skip_serializing_if = "is_false")]
     pub ssh_agent: bool,
+    /// Bind-mount the GPG agent socket (`S.gpg-agent`) from the host.
+    /// Requires `GPG_TTY` to be set inside the container.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub gpg_agent: bool,
     /// Bind-mount host font directory (`~/.fonts`) as read-only.
     /// Only top-level directories are mounted to keep `.local` and `.config` writable.
     #[serde(default = "default_true", skip_serializing_if = "is_true")]
@@ -324,6 +328,7 @@ impl Default for IntegrationConfig {
             clipboard: true,
             host_exec: HostExecConfig::default(),
             ssh_agent: false,
+            gpg_agent: false,
             sync_fonts: true,
             sync_icons: true,
             sync_themes: true,
@@ -418,13 +423,19 @@ pub struct SystemdConfig {
 
 /// D-Bus access control via `xdg-dbus-proxy`.
 ///
-/// When `integration.dbus = true` and at least one rule is present here,
+/// When `integration.dbus = true` and at least one rule is present here
+/// (either explicit via `talk`/`own` or expanded from `preset`),
 /// `podbox` generates a companion `podbox-proxy-<name>.service` unit that
 /// runs `xdg-dbus-proxy` to filter which D-Bus services the container
 /// can talk to or own.  Otherwise (or when empty) the container gets
 /// unfiltered access to the host session bus via `Volume=%t/bus:%t/bus`.
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct DbusConfig {
+    /// Named preset to expand into talk rules.
+    /// Supported: "none", "flatpak", "gnome", "kde", "portal".
+    /// Empty/unset expands to nothing (unfiltered access).
+    #[serde(default)]
+    pub preset: String,
     /// D-Bus services the container is allowed to call (two-way).
     #[serde(default)]
     pub talk: Vec<String>,
@@ -433,15 +444,94 @@ pub struct DbusConfig {
     pub own: Vec<String>,
 }
 
+impl Default for DbusConfig {
+    fn default() -> Self {
+        DbusConfig {
+            preset: String::new(),
+            talk: Vec::new(),
+            own: Vec::new(),
+        }
+    }
+}
+
+impl DbusConfig {
+    /// Return the effective talk list, expanded from preset if set.
+    pub fn effective_talk(&self) -> Vec<String> {
+        let mut result = self.talk.clone();
+        if !self.preset.is_empty() && self.preset != "none" {
+            for svc in dbus_preset_talk(&self.preset) {
+                if !result.contains(&svc.to_string()) {
+                    result.push(svc.to_string());
+                }
+            }
+        }
+        result
+    }
+}
+
+/// Map a named preset to its D-Bus talk rules.
+fn dbus_preset_talk(preset: &str) -> &[&str] {
+    match preset {
+        "flatpak" => &[
+            "org.freedesktop.Flatpak",
+            "org.freedesktop.Flatpak.*",
+            "org.freedesktop.portal.*",
+            "org.freedesktop.portal.Flatpak.*",
+        ],
+        "gnome" => &[
+            "org.gnome.Shell",
+            "org.gnome.Shell.*",
+            "org.gnome.ScreenSaver",
+            "org.gnome.Mutter.*",
+            "org.gnome.keyring.*",
+            "org.freedesktop.portal.*",
+        ],
+        "kde" => &[
+            "org.kde.*",
+            "org.freedesktop.portal.*",
+        ],
+        "portal" => &[
+            "org.freedesktop.portal.*",
+            "org.freedesktop.portal.FileChooser",
+            "org.freedesktop.portal.Notification",
+            "org.freedesktop.portal.OpenURI",
+            "org.freedesktop.portal.Screenshot",
+            "org.freedesktop.portal.RemoteDesktop",
+            "org.freedesktop.portal.ScreenCast",
+        ],
+        _ => &[],
+    }
+}
+
 // ---------------------------------------------------------------------------
 //  SecurityConfig
 // ---------------------------------------------------------------------------
 
-#[derive(Debug, Deserialize, Serialize, Clone, Default)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct SecurityConfig {
     /// AppArmor profile name or path. Empty/None = use Podman default.
     #[serde(default)]
     pub apparmor: Option<String>,
+    /// Seccomp profile path (absolute in container, or "default", or "unconfined").
+    #[serde(default)]
+    pub seccomp: Option<String>,
+    /// Disable SELinux process labeling for the container.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub security_label_disable: bool,
+    /// Disable the use of `--security-opt no-new-privileges`.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub no_new_privileges: bool,
+}
+
+impl Default for SecurityConfig {
+    fn default() -> Self {
+        SecurityConfig {
+            apparmor: None,
+            seccomp: None,
+            security_label_disable: true,
+            no_new_privileges: true,
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -467,7 +557,8 @@ pub struct Config {
 impl Config {
     /// Returns `true` when D-Bus integration is active (proxy unit is generated).
     pub fn use_dbus_proxy(&self) -> bool {
-        self.integration.dbus && (!self.dbus.talk.is_empty() || !self.dbus.own.is_empty())
+        self.integration.dbus
+            && (!self.dbus.effective_talk().is_empty() || !self.dbus.own.is_empty())
     }
 
     /// Parse a TOML definition from a string.
@@ -690,11 +781,14 @@ fn is_default_systemd(v: &SystemdConfig) -> bool {
 }
 
 fn is_default_dbus(v: &DbusConfig) -> bool {
-    v.talk.is_empty() && v.own.is_empty()
+    v.preset.is_empty() && v.talk.is_empty() && v.own.is_empty()
 }
 
 fn is_default_security(v: &SecurityConfig) -> bool {
     v.apparmor.is_none()
+        && v.seccomp.is_none()
+        && v.security_label_disable
+        && v.no_new_privileges
 }
 
 /// Expand a leading `~` in a path to the user's home directory.

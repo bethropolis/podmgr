@@ -34,6 +34,8 @@ fn default_env() -> HostEnv {
         host_has_local_share_fonts: false,
         host_shell: None,
         host_locale: None,
+        gpg_agent_socket: None,
+        gpg_home: None,
     }
 }
 

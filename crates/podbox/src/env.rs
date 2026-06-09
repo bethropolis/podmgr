@@ -24,6 +24,8 @@ pub struct HostEnv {
     pub host_has_local_share_fonts: bool,
     pub host_shell: Option<String>,
     pub host_locale: Option<String>,
+    pub gpg_agent_socket: Option<PathBuf>,
+    pub gpg_home: Option<PathBuf>,
 }
 
 /// Resolve the host environment.
@@ -72,6 +74,15 @@ pub fn resolve() -> Result<HostEnv> {
         .or_else(|| env::var("LC_CTYPE").ok())
         .filter(|s| !s.is_empty());
 
+    let gpg_home = env::var("GNUPGHOME").ok().map(PathBuf::from).or_else(|| {
+        let fallback = dirs::home_dir().unwrap_or_else(|| PathBuf::from("/root")).join(".gnupg");
+        if fallback.exists() { Some(fallback) } else { None }
+    });
+    let gpg_agent_socket = gpg_home.as_ref().and_then(|gpg| {
+        let sock = gpg.join("S.gpg-agent");
+        if sock.exists() { Some(sock) } else { None }
+    });
+
     Ok(HostEnv {
         uid,
         username,
@@ -91,5 +102,7 @@ pub fn resolve() -> Result<HostEnv> {
         host_has_local_share_fonts,
         host_shell,
         host_locale,
+        gpg_agent_socket,
+        gpg_home,
     })
 }

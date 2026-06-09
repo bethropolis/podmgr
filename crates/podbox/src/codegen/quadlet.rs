@@ -97,7 +97,15 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     lines.push(format!("ContainerName={}", name));
     lines.push("UserNS=keep-id".into());
     lines.push("User=root".into());
-    lines.push("SecurityLabelDisable=true".into());
+    if config.security.security_label_disable {
+        lines.push("SecurityLabelDisable=true".into());
+    }
+    if let Some(ref seccomp) = config.security.seccomp {
+        lines.push(format!("SeccompProfile={}", seccomp));
+    }
+    if !config.security.no_new_privileges {
+        lines.push("NoNewPrivileges=false".into());
+    }
     if let Some(ref mem) = config.container.memory {
         lines.push(format!("Memory={}", mem));
     }
@@ -230,6 +238,18 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
             lines.push("Environment=SSH_AUTH_SOCK=/run/podbox/ssh-agent.sock".into());
         } else {
             eprintln!("Warning: ssh_agent = true requires Podman >= 5.6 for SSH_AUTH_SOCK passthrough. Skipping SSH agent.");
+        }
+        lines.push(String::new());
+    }
+
+    // GPG agent
+    if config.integration.gpg_agent {
+        if let Some(ref sock) = env.gpg_agent_socket {
+            lines.push(format!("Volume={}:/run/podbox/gnupg/S.gpg-agent:ro", sock.display()));
+            lines.push("Environment=GPG_TTY=/dev/pts/0".into());
+            lines.push("Environment=GNUPGHOME=/run/podbox/gnupg".into());
+        } else {
+            eprintln!("Warning: gpg_agent = true but S.gpg-agent socket not found on host. Skipping GPG agent.");
         }
         lines.push(String::new());
     }
@@ -378,7 +398,7 @@ pub fn generate_dbus_proxy_service(name: &str, config: &Config) -> Option<String
 
     args.push("--filter".into());
 
-    for service in &config.dbus.talk {
+    for service in &config.dbus.effective_talk() {
         args.push(format!("--talk={}", service));
     }
     for service in &config.dbus.own {
