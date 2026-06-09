@@ -485,6 +485,8 @@ pub fn run_init(
         .join(&container_name);
     cfg.image.packages.manager = detect_package_manager(base).to_string();
 
+    // Clear default shell so apply_shell_defaults fills in the host shell
+    cfg.container.shell.clear();
     podbox::init_wizard::apply_shell_defaults(&mut cfg, &shell_info);
     cfg.validate()?;
     let toml_str = toml::to_string_pretty(&cfg)?;

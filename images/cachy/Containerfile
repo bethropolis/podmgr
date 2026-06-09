@@ -8,7 +8,8 @@ ENV PODBOX_CONTAINER=1
 COPY $TARGETPLATFORM/podbox-guest /usr/local/bin/podbox-guest
 
 RUN pacman -Syu --noconfirm fish fastfetch \
- && pacman -Scc --noconfirm
+ && pacman -Scc --noconfirm \
+ && localedef -i en_US -f UTF-8 en_US.UTF-8
 
 RUN chmod +x /usr/local/bin/podbox-guest
 

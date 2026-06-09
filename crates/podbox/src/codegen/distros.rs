@@ -24,10 +24,10 @@ impl DistroFamily {
             || base_lower.contains("rocky")
             || base_lower.contains("alma")
             || base_lower.contains("nobara")
-            || base_lower.contains("cachy")
         {
             Self::FedoraLike
         } else if base_lower.contains("arch")
+            || base_lower.contains("cachy")
             || base_lower.contains("manjaro")
             || base_lower.contains("endeavouros")
             || base_lower.contains("garuda")
@@ -272,7 +272,7 @@ mod tests {
         );
         assert_eq!(
             DistroFamily::from_base_image("cachy-latest"),
-            DistroFamily::FedoraLike
+            DistroFamily::ArchLike
         );
         assert_eq!(
             DistroFamily::from_base_image("archlinux:latest"),

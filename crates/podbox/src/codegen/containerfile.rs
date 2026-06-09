@@ -128,6 +128,28 @@ impl ContainerfileBuilder {
             lines.push(String::new());
         }
 
+        if let Some(locale) = self
+            .env_vars
+            .iter()
+            .find(|(k, _)| k == "LANG")
+            .map(|(_, v)| v.as_str())
+        {
+            match distro {
+                DistroFamily::DebianLike | DistroFamily::ArchLike => {
+                    let (name, charset) = locale.split_once('.').unwrap_or((locale, "UTF-8"));
+                    lines.push(format!(
+                        "RUN localedef -i {} -f {} {} || true",
+                        name, charset, locale
+                    ));
+                    lines.push(String::new());
+                }
+                DistroFamily::FedoraLike => {
+                    // glibc-all-langpacks includes pre-generated locales, no localedef needed
+                }
+                DistroFamily::AlpineLike | DistroFamily::Unknown => {}
+            }
+        }
+
         if self.has_guest_binary {
             lines.push("COPY podbox-guest /usr/local/bin/podbox-guest".into());
             lines.push("RUN chmod +x /usr/local/bin/podbox-guest".into());
@@ -183,6 +205,7 @@ mod tests {
         assert!(cf.contains("fish"));
         assert!(cf.contains("locales"));
         assert!(cf.contains("ENV LANG=en_US.UTF-8"));
+        assert!(cf.contains("localedef -i en_US -f UTF-8 en_US.UTF-8"));
         assert!(cf.contains("ENV PODBOX_CONTAINER=test"));
     }
 
@@ -198,6 +221,8 @@ mod tests {
         assert!(cf.contains("sudo"));
         assert!(cf.contains("zsh"));
         assert!(cf.contains("ENV PODBOX_CONTAINER=test"));
+        // Fedora uses glibc-all-langpacks (no localedef needed)
+        assert!(!cf.contains("localedef"));
     }
 
     #[test]
@@ -212,6 +237,19 @@ mod tests {
         assert!(cf.contains("bash"));
         assert!(cf.contains("bash-completion"));
         assert!(cf.contains("ENV PODBOX_CONTAINER=test"));
+        // No locale requested, so no localedef
+        assert!(!cf.contains("localedef"));
+    }
+
+    #[test]
+    fn test_builder_arch_with_locale() {
+        let builder = ContainerfileBuilder::new("archlinux:latest", "test").add_base_packages(
+            DistroFamily::ArchLike,
+            Some("/bin/bash"),
+            Some("en_US.UTF-8"),
+        );
+        let cf = builder.build();
+        assert!(cf.contains("localedef -i en_US -f UTF-8 en_US.UTF-8"));
     }
 
     #[test]

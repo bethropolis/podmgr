@@ -77,8 +77,11 @@ fn shell_info_from_bin(bin: &str) -> ShellInfo {
 }
 
 /// Apply shell defaults to a config loaded from a profile.
+/// Does NOT override a shell that the profile already set (e.g. `shell = "/usr/bin/fish"`).
 pub fn apply_shell_defaults(config: &mut Config, shell: &ShellInfo) {
-    config.container.shell = shell.full_path.clone();
+    if config.container.shell.trim().is_empty() {
+        config.container.shell = shell.full_path.clone();
+    }
     if !config
         .image
         .packages
@@ -803,9 +806,37 @@ home = "~/containers/testenv"
             package_name: "zsh".into(),
             detected: true,
         };
+        // Shell defaults to "fish" via serde; apply_shell_defaults should NOT
+        // override an already-set shell (it only fills in empty ones).
         apply_shell_defaults(&mut cfg, &shell);
         assert!(cfg.image.packages.install.contains(&"zsh".to_string()));
-        assert_eq!(cfg.container.shell, "/bin/zsh");
+        assert_eq!(
+            cfg.container.shell, "fish",
+            "should not override existing shell"
+        );
+    }
+
+    #[test]
+    fn apply_shell_fills_empty_shell() {
+        let toml = r#"
+[image]
+base = "fedora:41"
+name = "testenv"
+[container]
+name = "testenv"
+home = "~/containers/testenv"
+"#;
+        let mut cfg: Config = toml::from_str(toml).unwrap();
+        cfg.container.shell.clear();
+        let shell = ShellInfo {
+            bin_name: "zsh".into(),
+            full_path: "/bin/zsh".into(),
+            package_name: "zsh".into(),
+            detected: true,
+        };
+        apply_shell_defaults(&mut cfg, &shell);
+        assert_eq!(cfg.container.shell, "/bin/zsh", "should fill empty shell");
+        assert!(cfg.image.packages.install.contains(&"zsh".to_string()));
     }
 
     #[test]

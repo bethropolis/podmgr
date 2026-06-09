@@ -7,7 +7,7 @@ ENV PODBOX_CONTAINER=1
 
 COPY $TARGETPLATFORM/podbox-guest /usr/local/bin/podbox-guest
 
-RUN dnf install -y fish fastfetch \
+RUN dnf install -y fish fastfetch glibc-langpack-en \
  && dnf clean all
 
 RUN chmod +x /usr/local/bin/podbox-guest

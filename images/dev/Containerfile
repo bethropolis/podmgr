@@ -16,7 +16,8 @@ RUN pacman -Syu --noconfirm \
     fd \
     zoxide \
     mise \
- && pacman -Scc --noconfirm
+ && pacman -Scc --noconfirm \
+ && localedef -i en_US -f UTF-8 en_US.UTF-8
 
 RUN chmod +x /usr/local/bin/podbox-guest
 
