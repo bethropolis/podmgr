@@ -147,9 +147,9 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
             socket_unit.into(),
         ];
         let _ = crate::process::run_piped("systemctl", &enable_args);
-        // Restart host service so config changes take effect immediately (Issue #3).
+        // Start host service so config changes take effect immediately (Issue #3).
         let _ = crate::process::run_piped("systemctl", &vec![
-            "--user".into(), "try-restart".into(), host_unit.into(),
+            "--user".into(), "start".into(), host_unit.into(),
         ]);
     } else {
         // 5.5 fallback: copy files manually
@@ -221,7 +221,7 @@ pub fn install(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs, dry_run: b
         ];
         let _ = crate::process::run_piped("systemctl", &enable_args);
         let _ = crate::process::run_piped("systemctl", &vec![
-            "--user".into(), "try-restart".into(), host_unit.into(),
+            "--user".into(), "start".into(), host_unit.into(),
         ]);
     }
 
