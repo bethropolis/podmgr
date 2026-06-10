@@ -3,10 +3,18 @@ use std::time::{Duration, Instant};
 
 use podbox::podman::{query_state, ContainerState};
 
-pub mod config;
+pub mod clone;
+pub mod context;
+pub mod create;
+pub mod definition;
 pub mod diff;
+pub mod export;
+pub mod inspect;
 pub mod lifecycle;
+pub mod pull;
 pub mod runtime;
+pub mod serve;
+pub mod translate;
 
 pub const DEFAULT_START_TIMEOUT_SECS: u64 = 30;
 const POLL_INTERVAL_MS: u64 = 300;

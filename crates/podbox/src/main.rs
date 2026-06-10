@@ -81,7 +81,7 @@ fn run() -> Result<()> {
 
     match &cli.command {
         Command::Completions { shell } => {
-            return commands::config::run_completions((*shell).into());
+            return commands::definition::run_completions((*shell).into());
         }
 
         Command::Init {
@@ -90,7 +90,7 @@ fn run() -> Result<()> {
             interactive,
             profile,
         } => {
-            return commands::config::run_init(
+            return commands::create::run_init(
                 cli.dry_run,
                 image.as_deref(),
                 name.as_deref(),
@@ -105,7 +105,7 @@ fn run() -> Result<()> {
             packages,
             no_start,
         } => {
-            return commands::config::run_create(
+            return commands::create::run_create(
                 cli.dry_run,
                 image,
                 name.as_deref(),
@@ -115,7 +115,7 @@ fn run() -> Result<()> {
         }
 
         Command::List => {
-            return commands::config::run_list();
+            return commands::definition::run_list();
         }
 
         Command::Clone {
@@ -123,11 +123,11 @@ fn run() -> Result<()> {
             dst,
             copy_home,
         } => {
-            return commands::config::run_clone(src, dst, *copy_home, cli.dry_run);
+            return commands::clone::run_clone(src, dst, *copy_home, cli.dry_run);
         }
 
         Command::Use { name, clear } => {
-            return commands::config::run_use(name.clone(), *clear, cli.dry_run);
+            return commands::context::run_use(name.clone(), *clear, cli.dry_run);
         }
 
         _ => {}
@@ -143,7 +143,7 @@ fn run() -> Result<()> {
     // Short-circuit for commands that don't need a full config load
     if let Command::FindDefinition { name } = &cli.command {
         let lookup = name.clone().or_else(|| target_name.clone());
-        return commands::config::run_find_definition(lookup.as_deref());
+        return commands::definition::run_find_definition(lookup.as_deref());
     }
 
     if let Command::Disable { force: true, .. } = &cli.command {
@@ -235,7 +235,7 @@ fn run() -> Result<()> {
             env: show_env,
             ..
         } => {
-            commands::config::run_inspect(
+            commands::inspect::run_inspect(
                 &config,
                 &name,
                 &env,
@@ -247,7 +247,7 @@ fn run() -> Result<()> {
         }
 
         Command::Export { export_cmd } => {
-            commands::config::run_export(&name, Some(&config), export_cmd)?;
+            commands::export::run_export(&name, Some(&config), export_cmd)?;
         }
 
         Command::Remove {
@@ -260,7 +260,7 @@ fn run() -> Result<()> {
         }
 
         Command::Serve { name: serve_name } => {
-            commands::config::run_serve(cli.config.as_ref(), serve_name, cli.dry_run)?;
+            commands::serve::run_serve(cli.config.as_ref(), serve_name, cli.dry_run)?;
         }
 
         Command::Update { no_restart, .. } => {
@@ -268,7 +268,7 @@ fn run() -> Result<()> {
         }
 
         Command::Pull { image } => {
-            commands::config::run_pull(&config, image, cli.dry_run)?;
+            commands::pull::run_pull(&config, image, cli.dry_run)?;
         }
 
         Command::Doctor { fix } => {
@@ -280,7 +280,7 @@ fn run() -> Result<()> {
             to_host,
             path,
         } => {
-            commands::config::run_translate_path(&config, &xdg, *to_container, *to_host, path)?;
+            commands::translate::run_translate_path(&config, &xdg, *to_container, *to_host, path)?;
         }
 
         Command::FindDefinition { .. }
@@ -337,7 +337,7 @@ fn resolve_config(cli: &Cli, target_name: Option<String>) -> Result<(Config, Str
                     .interact()
                     .unwrap_or(false);
             if launch {
-                commands::config::run_init(cli.dry_run, None, None, true, None)?;
+                commands::create::run_init(cli.dry_run, None, None, true, None)?;
                 return Ok((Config::embedded(), String::new()));
             }
         }
