@@ -1,7 +1,7 @@
 use std::os::unix::net::UnixStream;
 
-use crate::socket::host_socket_path;
 use crate::protocol::{read_frame, write_frame, GuestMessage, HostMessage};
+use crate::socket::host_socket_path;
 
 pub fn run(args: &[String]) {
     if args.len() < 2 {

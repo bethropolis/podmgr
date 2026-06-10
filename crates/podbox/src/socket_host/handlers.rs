@@ -94,9 +94,7 @@ pub(super) fn handle_notify(
 }
 
 /// Handle an `XdgOpen` message from the guest.
-pub(super) fn handle_xdg_open(
-    uri: String,
-) -> anyhow::Result<()> {
+pub(super) fn handle_xdg_open(uri: String) -> anyhow::Result<()> {
     if let Some(validated) = validate_uri(&uri) {
         if let Ok(mut child) = std::process::Command::new("xdg-open")
             .arg(&validated)
@@ -109,9 +107,7 @@ pub(super) fn handle_xdg_open(
 }
 
 /// Handle a `ClipboardSet` message from the guest.
-pub(super) fn handle_clipboard_set(
-    text: String,
-) -> anyhow::Result<()> {
+pub(super) fn handle_clipboard_set(text: String) -> anyhow::Result<()> {
     let mut child = std::process::Command::new("wl-copy")
         .stdin(std::process::Stdio::piped())
         .spawn()?;
@@ -123,9 +119,7 @@ pub(super) fn handle_clipboard_set(
 }
 
 /// Handle a `ClipboardGet` message from the guest.
-pub(super) fn handle_clipboard_get(
-    stream: &mut UnixStream,
-) -> anyhow::Result<()> {
+pub(super) fn handle_clipboard_get(stream: &mut UnixStream) -> anyhow::Result<()> {
     let output = std::process::Command::new("wl-paste").output()?;
     let text = String::from_utf8_lossy(&output.stdout);
     let response = HostMessage::ClipboardData {
@@ -249,13 +243,23 @@ pub(super) fn validate_host_exec_args(args: &[String]) -> Result<(), String> {
         if arg.contains('<') || arg.contains('>') {
             return Err(format!("argument {:?} contains redirection operators", arg));
         }
-        if arg.contains('*') || arg.contains('?') || arg.contains('[') || arg.contains(']')
-            || arg.contains('{') || arg.contains('}')
+        if arg.contains('*')
+            || arg.contains('?')
+            || arg.contains('[')
+            || arg.contains(']')
+            || arg.contains('{')
+            || arg.contains('}')
         {
-            return Err(format!("argument {:?} contains glob or brace characters", arg));
+            return Err(format!(
+                "argument {:?} contains glob or brace characters",
+                arg
+            ));
         }
         if arg.contains('(') || arg.contains(')') || arg.contains('\\') {
-            return Err(format!("argument {:?} contains subshell or escape characters", arg));
+            return Err(format!(
+                "argument {:?} contains subshell or escape characters",
+                arg
+            ));
         }
         let lower = arg.to_ascii_lowercase();
         if lower.starts_with("--exec-path")
@@ -289,9 +293,7 @@ pub(super) fn validate_uri(uri: &str) -> Option<String> {
                 None
             }
         }
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            Some(format!("https://{}", s))
-        }
+        Err(url::ParseError::RelativeUrlWithoutBase) => Some(format!("https://{}", s)),
         _ => None,
     }
 }

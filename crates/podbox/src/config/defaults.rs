@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
 use crate::config::enums::{GpuMode, OnStop, PackageManager};
-use crate::config::types::{HostExecConfig, LifecycleConfig, PackageConfig, RunConfig, SecurityConfig, SystemdConfig};
+use crate::config::types::{
+    HostExecConfig, LifecycleConfig, PackageConfig, RunConfig, SecurityConfig, SystemdConfig,
+};
 
 pub const EMBEDDED_DEFAULT: &str = r#"
 [image]

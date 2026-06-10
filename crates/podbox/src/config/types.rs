@@ -5,9 +5,9 @@ use serde::{Deserialize, Serialize};
 
 use crate::config::defaults::{
     default_package_manager, default_pull_retry, default_pull_retry_delay, default_shell,
-    default_true, is_default_gpu, is_default_host_exec, is_default_mounts,
-    is_default_packages, is_default_pkg_mgr, is_default_pull_retry, is_default_pull_retry_delay,
-    is_default_run, is_default_shell, is_empty_hashmap, is_false, is_true,
+    default_true, is_default_gpu, is_default_host_exec, is_default_mounts, is_default_packages,
+    is_default_pkg_mgr, is_default_pull_retry, is_default_pull_retry_delay, is_default_run,
+    is_default_shell, is_empty_hashmap, is_false, is_true,
 };
 use crate::config::enums::{GpuMode, ImageSource, OnStop, PackageManager, XdgDirValue};
 use crate::config::expand_tilde;
@@ -308,4 +308,3 @@ impl Default for SecurityConfig {
         }
     }
 }
-

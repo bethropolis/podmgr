@@ -305,12 +305,7 @@ fn emit_volumes(
     }
 }
 
-fn emit_env(
-    lines: &mut Vec<String>,
-    config: &Config,
-    name: &str,
-    _env: &HostEnv,
-) {
+fn emit_env(lines: &mut Vec<String>, config: &Config, name: &str, _env: &HostEnv) {
     // Locale environment
     if let Some(ref locale) = _env.host_locale {
         lines.push(format!("Environment=LANG={}", locale));

@@ -64,8 +64,14 @@ fn default_env() -> HostEnv {
 
 fn default_xdg() -> ResolvedXdgDirs {
     ResolvedXdgDirs {
-        documents: Some(ResolvedXdgDir { path: PathBuf::from("/home/user/Documents"), read_write: false }),
-        downloads: Some(ResolvedXdgDir { path: PathBuf::from("/home/user/Downloads"), read_write: false }),
+        documents: Some(ResolvedXdgDir {
+            path: PathBuf::from("/home/user/Documents"),
+            read_write: false,
+        }),
+        downloads: Some(ResolvedXdgDir {
+            path: PathBuf::from("/home/user/Downloads"),
+            read_write: false,
+        }),
         pictures: None,
         music: None,
         videos: None,

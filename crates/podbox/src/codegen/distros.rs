@@ -78,10 +78,23 @@ impl DistroFamily {
 
     pub fn base_packages(&self, host_shell: Option<&str>) -> Vec<String> {
         let common: Vec<String> = [
-            "sudo", "curl", "tar", "unzip", "wget", "which",
-            "coreutils", "diffutils", "findutils", "grep", "sed", "gawk",
+            "sudo",
+            "curl",
+            "tar",
+            "unzip",
+            "wget",
+            "which",
+            "coreutils",
+            "diffutils",
+            "findutils",
+            "grep",
+            "sed",
+            "gawk",
             "bash-completion",
-        ].into_iter().map(String::from).collect();
+        ]
+        .into_iter()
+        .map(String::from)
+        .collect();
 
         let mut pkgs = common;
 
@@ -284,9 +297,6 @@ mod tests {
             "pacman -Syu --noconfirm"
         );
         assert_eq!(DistroFamily::AlpineLike.install_cmd(), "apk add --no-cache");
-        assert_eq!(
-            DistroFamily::SuseLike.install_cmd(),
-            "zypper install -y"
-        );
+        assert_eq!(DistroFamily::SuseLike.install_cmd(), "zypper install -y");
     }
 }

@@ -83,7 +83,11 @@ impl Config {
         }
 
         if self.integration.host_exec.enabled {
-            let has_allowlist = self.integration.host_exec.allowlist.as_ref()
+            let has_allowlist = self
+                .integration
+                .host_exec
+                .allowlist
+                .as_ref()
                 .is_some_and(|m| !m.is_empty());
             if !has_allowlist {
                 errors.push(

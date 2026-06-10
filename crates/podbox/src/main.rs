@@ -201,7 +201,11 @@ fn run() -> Result<()> {
             commands::lifecycle::run_disable(&name)?;
         }
 
-        Command::Start { name: _, timeout, edit } => {
+        Command::Start {
+            name: _,
+            timeout,
+            edit,
+        } => {
             if *edit {
                 let config_path = resolve_config_path(cli.container.as_deref())?;
                 let ed = editor::resolve()?;
@@ -439,9 +443,7 @@ fn resolve_config_path(container: Option<&str>) -> Result<PathBuf> {
             let local = config::find_definition();
             match local {
                 Some(p) => Ok(p),
-                None => anyhow::bail!(
-                    "no config found. Run `podbox init` to create one."
-                ),
+                None => anyhow::bail!("no config found. Run `podbox init` to create one."),
             }
         }
         1 => Ok(configs.into_iter().next().unwrap()),
@@ -451,18 +453,15 @@ fn resolve_config_path(container: Option<&str>) -> Result<PathBuf> {
                     .iter()
                     .filter_map(|p| p.file_stem().map(|s| s.to_string_lossy().to_string()))
                     .collect();
-                let idx = dialoguer::Select::with_theme(
-                    &dialoguer::theme::ColorfulTheme::default(),
-                )
-                .with_prompt("Select container")
-                .items(&items)
-                .default(0)
-                .interact()?;
+                let idx =
+                    dialoguer::Select::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                        .with_prompt("Select container")
+                        .items(&items)
+                        .default(0)
+                        .interact()?;
                 Ok(configs[idx].clone())
             } else {
-                anyhow::bail!(
-                    "multiple configs found — specify one with --container <name>"
-                )
+                anyhow::bail!("multiple configs found — specify one with --container <name>")
             }
         }
     }
@@ -505,12 +504,10 @@ fn run_edit(dry_run: bool, container: Option<&str>, rebuild_after: bool) -> Resu
             let xdg = podbox::xdg::resolve(&config.integration.xdg_dirs)?;
             commands::lifecycle::run_build(&config, &env, &xdg, false, false, false)?;
         } else if podbox::codegen::distros::is_tty() {
-            let yes = dialoguer::Confirm::with_theme(
-                &dialoguer::theme::ColorfulTheme::default(),
-            )
-            .with_prompt("Rebuild now?")
-            .default(true)
-            .interact()?;
+            let yes = dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
+                .with_prompt("Rebuild now?")
+                .default(true)
+                .interact()?;
             if yes {
                 let config = Config::load(&config_path)?;
                 let env = podbox::env::resolve()?;

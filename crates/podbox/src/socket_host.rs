@@ -222,7 +222,7 @@ fn monitor_pidfd(raw_fd: RawFd, state: Arc<SharedState>) {
 
 #[cfg(test)]
 mod tests {
-    use super::handlers::{validate_uri, validate_host_exec_args};
+    use super::handlers::{validate_host_exec_args, validate_uri};
 
     // ── validate_uri tests ──
 
@@ -318,9 +318,11 @@ mod tests {
         assert!(validate_host_exec_args(&["python".into(), "--load=malicious".into()]).is_err());
         assert!(validate_host_exec_args(&["python".into(), "--module=malicious".into()]).is_err());
         assert!(validate_host_exec_args(&["git".into(), "--remote=evil".into()]).is_err());
-        assert!(validate_host_exec_args(
-            &["ssh".into(), "-o".into(), "StrictHostKeyChecking=no".into()]
-        )
+        assert!(validate_host_exec_args(&[
+            "ssh".into(),
+            "-o".into(),
+            "StrictHostKeyChecking=no".into()
+        ])
         .is_err());
     }
 
@@ -351,9 +353,7 @@ mod tests {
 
     #[test]
     fn ascii_lowercase_only() {
-        assert!(
-            validate_host_exec_args(&["git".into(), "--EXEC-PATH=".into()]).is_err()
-        );
+        assert!(validate_host_exec_args(&["git".into(), "--EXEC-PATH=".into()]).is_err());
         assert!(
             validate_host_exec_args(&["git".into(), "--\u{0130}".into()]).is_ok(),
             "Turkish \u{0130} is non-ASCII"

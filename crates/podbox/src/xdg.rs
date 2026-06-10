@@ -51,7 +51,10 @@ fn resolve_dir(value: &XdgDirValue, xdg_name: &str, fallback_name: &str) -> Opti
         if !path.is_empty() && path != home_dir_str() {
             let p = PathBuf::from(path);
             if p.exists() {
-                return Some(ResolvedXdgDir { path: p, read_write });
+                return Some(ResolvedXdgDir {
+                    path: p,
+                    read_write,
+                });
             }
         }
     }
@@ -60,7 +63,10 @@ fn resolve_dir(value: &XdgDirValue, xdg_name: &str, fallback_name: &str) -> Opti
     if let Some(home) = dirs::home_dir() {
         let p = home.join(fallback_name);
         if p.exists() {
-            return Some(ResolvedXdgDir { path: p, read_write });
+            return Some(ResolvedXdgDir {
+                path: p,
+                read_write,
+            });
         }
     }
 

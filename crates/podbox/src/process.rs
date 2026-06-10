@@ -5,9 +5,7 @@ use std::os::unix::net::UnixStream;
 use std::os::unix::process::CommandExt;
 use std::process::{Command, ExitStatus, Output};
 
-use nix::sys::socket::{
-    recvmsg, sendmsg, ControlMessage, ControlMessageOwned, MsgFlags,
-};
+use nix::sys::socket::{recvmsg, sendmsg, ControlMessage, ControlMessageOwned, MsgFlags};
 
 /// Build a `Vec<OsString>` from a slice of `&str`/`&String` literals.
 pub fn args<S: AsRef<str>>(items: &[S]) -> Vec<OsString> {

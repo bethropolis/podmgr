@@ -150,7 +150,11 @@ pub enum OnStop {
 #[serde(untagged)]
 pub enum XdgDirValue {
     Simple(bool),
-    Detailed { enabled: bool, #[serde(default)] read_write: bool },
+    Detailed {
+        enabled: bool,
+        #[serde(default)]
+        read_write: bool,
+    },
 }
 
 impl Default for XdgDirValue {

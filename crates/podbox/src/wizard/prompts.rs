@@ -126,10 +126,7 @@ pub(super) fn detect_package_manager(image: &str) -> crate::config::PackageManag
     crate::codegen::distros::detect_package_manager(image)
 }
 
-pub(super) fn prompt_name(
-    default: &str,
-    config_dir: &std::path::Path,
-) -> anyhow::Result<String> {
+pub(super) fn prompt_name(default: &str, config_dir: &std::path::Path) -> anyhow::Result<String> {
     let name: String = dialoguer::Input::with_theme(&dialoguer::theme::ColorfulTheme::default())
         .with_prompt("Container name")
         .default(default.to_string())
@@ -352,7 +349,10 @@ pub(super) fn prompt_on_stop() -> OnStop {
 }
 
 pub(super) fn prompt_auto_update(config: &crate::config::Config) -> bool {
-    let is_prebuilt = matches!(config.image.source(), crate::config::ImageSource::Prebuilt { .. });
+    let is_prebuilt = matches!(
+        config.image.source(),
+        crate::config::ImageSource::Prebuilt { .. }
+    );
     if !is_prebuilt {
         let enabled = dialoguer::Confirm::with_theme(&dialoguer::theme::ColorfulTheme::default())
             .with_prompt("Auto-update image? (only works with prebuilt images)")

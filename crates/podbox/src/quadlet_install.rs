@@ -26,10 +26,7 @@ fn daemon_reload() {
     if which::which("systemctl").is_err() {
         return;
     }
-    let _ = crate::process::run_piped(
-        "systemctl",
-        &["--user".into(), "daemon-reload".into()],
-    );
+    let _ = crate::process::run_piped("systemctl", &["--user".into(), "daemon-reload".into()]);
 }
 
 fn reset_failed(name: &str) {
@@ -55,11 +52,19 @@ fn stop_socket_and_host(name: &str) {
     }
     let _ = crate::process::run_piped(
         "systemctl",
-        &["--user".into(), "stop".into(), format!("{}.socket", name).into()],
+        &[
+            "--user".into(),
+            "stop".into(),
+            format!("{}.socket", name).into(),
+        ],
     );
     let _ = crate::process::run_piped(
         "systemctl",
-        &["--user".into(), "stop".into(), format!("{}-host.service", name).into()],
+        &[
+            "--user".into(),
+            "stop".into(),
+            format!("{}-host.service", name).into(),
+        ],
     );
 }
 
@@ -84,7 +89,11 @@ fn start_host_service(name: &str) {
     }
     let _ = crate::process::run_piped(
         "systemctl",
-        &["--user".into(), "start".into(), format!("{}-host.service", name).into()],
+        &[
+            "--user".into(),
+            "start".into(),
+            format!("{}-host.service", name).into(),
+        ],
     );
 }
 

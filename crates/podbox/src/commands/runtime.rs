@@ -22,7 +22,9 @@ fn register_session(name: &str, xdg_runtime_dir: &Path) {
         Ok(fd) => fd,
         _ => return,
     };
-    let socket_path = xdg_runtime_dir.join("podbox").join(format!("{}.sock", name));
+    let socket_path = xdg_runtime_dir
+        .join("podbox")
+        .join(format!("{}.sock", name));
     let mut stream = match UnixStream::connect(&socket_path) {
         Ok(s) => s,
         _ => return,
@@ -33,11 +35,7 @@ fn register_session(name: &str, xdg_runtime_dir: &Path) {
 
 /// Enter a shell inside the container.
 pub fn run_shell_enter(env: &HostEnv, config: &Config, name: &str, dry_run: bool) -> Result<()> {
-    let tty_flag = if distros::is_tty() {
-        "-it"
-    } else {
-        "-i"
-    };
+    let tty_flag = if distros::is_tty() { "-it" } else { "-i" };
     let home_in_container = format!("/home/{}", env.username);
     if dry_run {
         let exec_args = podbox::process::args(&[
@@ -77,11 +75,7 @@ pub fn run_exec(
     dry_run: bool,
     root: bool,
 ) -> Result<()> {
-    let tty_flag = if distros::is_tty() {
-        "-it"
-    } else {
-        "-i"
-    };
+    let tty_flag = if distros::is_tty() { "-it" } else { "-i" };
     let base_args: &[&str] = if root {
         &["exec", tty_flag, name]
     } else {

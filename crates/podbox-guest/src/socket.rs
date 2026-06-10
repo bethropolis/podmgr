@@ -1,6 +1,6 @@
+use std::env;
 use std::os::unix::net::UnixStream;
 use std::path::{Path, PathBuf};
-use std::env;
 
 use crate::error::GuestError;
 use crate::protocol::{read_frame, write_frame, GuestMessage, HostMessage};

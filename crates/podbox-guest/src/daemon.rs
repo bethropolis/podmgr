@@ -194,9 +194,7 @@ fn event_loop(host_stream: &mut UnixStream) -> Result<(), GuestError> {
         } // fds dropped — borrows of host_stream and tracked are released
 
         // ── Host socket events ──
-        if host_revents.contains(PollFlags::POLLHUP)
-            || host_revents.contains(PollFlags::POLLERR)
-        {
+        if host_revents.contains(PollFlags::POLLHUP) || host_revents.contains(PollFlags::POLLERR) {
             eprintln!("podbox-guest: host socket hung up.");
             return Ok(());
         }

@@ -68,60 +68,127 @@ mod tests {
     #[test]
     fn parses_standard_version() {
         let v = parse_version_string("5.3.0");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 3,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn parses_version_with_epoch() {
         let v = parse_version_string("100:5.3.0");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 3,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn parses_version_with_parenthetical() {
         let v = parse_version_string("5.3.0 (ok)");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 3,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn parses_version_with_leading_trailing_whitespace() {
         let v = parse_version_string("  5.3.0  ");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 3,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn handles_single_component() {
         let v = parse_version_string("5");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 0, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 0,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn handles_two_components() {
         let v = parse_version_string("5.3");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 3,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn handles_empty_string() {
         let v = parse_version_string("");
-        assert_eq!(v, PodmanVersion { major: 0, minor: 0, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 0,
+                minor: 0,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn handles_non_numeric() {
         let v = parse_version_string("abc");
-        assert_eq!(v, PodmanVersion { major: 0, minor: 0, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 0,
+                minor: 0,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn handles_partial_numeric() {
         let v = parse_version_string("5.abc.0");
-        assert_eq!(v, PodmanVersion { major: 5, minor: 0, patch: 0 });
+        assert_eq!(
+            v,
+            PodmanVersion {
+                major: 5,
+                minor: 0,
+                patch: 0
+            }
+        );
     }
 
     #[test]
     fn version_at_least_works() {
-        let v = PodmanVersion { major: 5, minor: 6, patch: 0 };
+        let v = PodmanVersion {
+            major: 5,
+            minor: 6,
+            patch: 0,
+        };
         assert!(v.at_least(5, 6));
         assert!(v.at_least(4, 0));
         assert!(v.at_least(5, 5));
