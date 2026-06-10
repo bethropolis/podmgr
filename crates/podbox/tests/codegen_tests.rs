@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Mutex;
 
 use podbox::codegen::containerfile;
 use podbox::codegen::quadlet;
@@ -6,6 +7,27 @@ use podbox::config::{Config, GpuMode};
 use podbox::env::HostEnv;
 use podbox::xdg::ResolvedXdgDir;
 use podbox::xdg::ResolvedXdgDirs;
+
+/// Serializes tests that need to set `HOME` — `set_var` is process-global,
+/// so parallel modification would corrupt results.
+static HOME_LOCK: Mutex<()> = Mutex::new(());
+
+/// Create a sandboxed home directory and run `f` with `HOME` pointing at it.
+/// The temp dir is cleaned up on drop after restoring `HOME`.
+fn with_sandbox_home(f: impl FnOnce(&std::path::Path)) {
+    let _guard = HOME_LOCK.lock().unwrap();
+    let tmp = tempfile::tempdir().expect("failed to create temp dir");
+    let old_home = std::env::var_os("HOME");
+    std::env::set_var("HOME", tmp.path());
+    f(tmp.path());
+    if let Some(h) = old_home {
+        std::env::set_var("HOME", h);
+    } else {
+        std::env::remove_var("HOME");
+    }
+    // _guard dropped → HOME_LOCK released.
+    // TempDir is dropped here — cleaned up automatically.
+}
 
 fn load_config(name: &str) -> Config {
     let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -186,6 +208,7 @@ fn quadlet_xdg_dir_absent_when_disabled() {
 
 #[test]
 fn quadlet_no_host_home_mount() {
+    let _guard = HOME_LOCK.lock().unwrap();
     let config = load_config("full.toml");
     let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
     let home = dirs::home_dir().unwrap();
@@ -370,38 +393,40 @@ fn quadlet_systemd_dependencies_absent_by_default() {
 
 #[test]
 fn quadlet_visual_themes_present() {
-    // Create host dirs so the existence check passes
-    let home = dirs::home_dir().unwrap();
-    std::fs::create_dir_all(home.join(".local/share/themes")).ok();
-    let _ = std::fs::create_dir_all(home.join(".themes")).ok();
-    let config = load_config("full.toml");
-    let mut config = config.clone();
-    config.integration.sync_themes = true;
-    let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=%h/.themes:/home/%u/.themes:ro"));
+    with_sandbox_home(|home| {
+        std::fs::create_dir_all(home.join(".local/share/themes")).unwrap();
+        let _ = std::fs::create_dir_all(home.join(".themes")).unwrap();
+        let config = load_config("full.toml");
+        let mut config = config.clone();
+        config.integration.sync_themes = true;
+        let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
+        assert!(q.contains("Volume=%h/.themes:/home/%u/.themes:ro"));
+    });
 }
 
 #[test]
 fn quadlet_visual_icons_present() {
-    let home = dirs::home_dir().unwrap();
-    let _ = std::fs::create_dir_all(home.join(".icons")).ok();
-    let config = load_config("full.toml");
-    let mut config = config.clone();
-    config.integration.sync_icons = true;
-    let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=%h/.icons:/home/%u/.icons:ro"));
+    with_sandbox_home(|home| {
+        let _ = std::fs::create_dir_all(home.join(".icons")).unwrap();
+        let config = load_config("full.toml");
+        let mut config = config.clone();
+        config.integration.sync_icons = true;
+        let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
+        assert!(q.contains("Volume=%h/.icons:/home/%u/.icons:ro"));
+    });
 }
 
 #[test]
 fn quadlet_visual_fonts_present() {
-    let home = dirs::home_dir().unwrap();
-    let _ = std::fs::create_dir_all(home.join(".fonts")).ok();
-    let _ = std::fs::create_dir_all(home.join(".config/fontconfig")).ok();
-    let config = load_config("full.toml");
-    let mut config = config.clone();
-    config.integration.sync_fonts = true;
-    let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
-    assert!(q.contains("Volume=%h/.fonts:/home/%u/.fonts:ro"));
+    with_sandbox_home(|home| {
+        let _ = std::fs::create_dir_all(home.join(".fonts")).unwrap();
+        let _ = std::fs::create_dir_all(home.join(".config/fontconfig")).unwrap();
+        let config = load_config("full.toml");
+        let mut config = config.clone();
+        config.integration.sync_fonts = true;
+        let q = quadlet::generate_container(&config, &default_env(), &default_xdg());
+        assert!(q.contains("Volume=%h/.fonts:/home/%u/.fonts:ro"));
+    });
 }
 
 #[test]
@@ -526,46 +551,49 @@ fn quadlet_timezone_mounts_absent_when_unavailable() {
 
 #[test]
 fn quadlet_modern_theme_path_present() {
-    let home = dirs::home_dir().unwrap();
-    std::fs::create_dir_all(home.join(".local/share/themes")).ok();
-    let _ = std::fs::create_dir_all(home.join(".themes")).ok();
-    let config = load_config("full.toml");
-    let mut config = config.clone();
-    config.integration.sync_themes = true;
-    let mut env = default_env();
-    env.host_has_local_share_themes = true;
-    let q = quadlet::generate_container(&config, &env, &default_xdg());
-    assert!(q.contains("Volume=%h/.themes:/home/%u/.themes:ro"));
-    assert!(q.contains("Volume=%h/.local/share/themes:/home/%u/.local/share/themes:ro"));
+    with_sandbox_home(|home| {
+        std::fs::create_dir_all(home.join(".local/share/themes")).unwrap();
+        let _ = std::fs::create_dir_all(home.join(".themes")).unwrap();
+        let config = load_config("full.toml");
+        let mut config = config.clone();
+        config.integration.sync_themes = true;
+        let mut env = default_env();
+        env.host_has_local_share_themes = true;
+        let q = quadlet::generate_container(&config, &env, &default_xdg());
+        assert!(q.contains("Volume=%h/.themes:/home/%u/.themes:ro"));
+        assert!(q.contains("Volume=%h/.local/share/themes:/home/%u/.local/share/themes:ro"));
+    });
 }
 
 #[test]
 fn quadlet_modern_icon_path_present() {
-    let home = dirs::home_dir().unwrap();
-    let _ = std::fs::create_dir_all(home.join(".icons")).ok();
-    let config = load_config("full.toml");
-    let mut config = config.clone();
-    config.integration.sync_icons = true;
-    let mut env = default_env();
-    env.host_has_local_share_icons = true;
-    let q = quadlet::generate_container(&config, &env, &default_xdg());
-    assert!(q.contains("Volume=%h/.icons:/home/%u/.icons:ro"));
-    assert!(q.contains("Volume=%h/.local/share/icons:/home/%u/.local/share/icons:ro"));
+    with_sandbox_home(|home| {
+        let _ = std::fs::create_dir_all(home.join(".icons")).unwrap();
+        let config = load_config("full.toml");
+        let mut config = config.clone();
+        config.integration.sync_icons = true;
+        let mut env = default_env();
+        env.host_has_local_share_icons = true;
+        let q = quadlet::generate_container(&config, &env, &default_xdg());
+        assert!(q.contains("Volume=%h/.icons:/home/%u/.icons:ro"));
+        assert!(q.contains("Volume=%h/.local/share/icons:/home/%u/.local/share/icons:ro"));
+    });
 }
 
 #[test]
 fn quadlet_modern_font_path_present() {
-    let home = dirs::home_dir().unwrap();
-    let _ = std::fs::create_dir_all(home.join(".fonts")).ok();
-    let _ = std::fs::create_dir_all(home.join(".config/fontconfig")).ok();
-    let config = load_config("full.toml");
-    let mut config = config.clone();
-    config.integration.sync_fonts = true;
-    let mut env = default_env();
-    env.host_has_local_share_fonts = true;
-    let q = quadlet::generate_container(&config, &env, &default_xdg());
-    assert!(q.contains("Volume=%h/.fonts:/home/%u/.fonts:ro"));
-    assert!(q.contains("Volume=%h/.local/share/fonts:/home/%u/.local/share/fonts:ro"));
+    with_sandbox_home(|home| {
+        let _ = std::fs::create_dir_all(home.join(".fonts")).unwrap();
+        let _ = std::fs::create_dir_all(home.join(".config/fontconfig")).unwrap();
+        let config = load_config("full.toml");
+        let mut config = config.clone();
+        config.integration.sync_fonts = true;
+        let mut env = default_env();
+        env.host_has_local_share_fonts = true;
+        let q = quadlet::generate_container(&config, &env, &default_xdg());
+        assert!(q.contains("Volume=%h/.fonts:/home/%u/.fonts:ro"));
+        assert!(q.contains("Volume=%h/.local/share/fonts:/home/%u/.local/share/fonts:ro"));
+    });
 }
 
 #[test]
@@ -642,4 +670,56 @@ fn quadlet_dbus_proxy_unit_has_restart_sec() {
         .expect("proxy service should be generated");
     assert!(unit.contains("Restart=on-failure"));
     assert!(unit.contains("RestartSec=1s"));
+}
+
+// ── Snapshot tests ──
+
+// Snapshot tests for functions with deterministic output.
+//
+// NOTE: `generate_container` is NOT snapshot-tested here because its
+// output depends on `config.container.env` (a `HashMap` with
+// non-deterministic iteration order).  Targeted assertion tests below
+// cover the container output adequately.
+
+#[test]
+fn snapshot_quadlet_socket() {
+    let config = load_config("full.toml");
+    let q = quadlet::generate_socket(&config);
+    insta::assert_snapshot!("quadlet_socket", q);
+}
+
+#[test]
+fn snapshot_quadlet_build() {
+    let config = load_config("full.toml");
+    let cf_path = PathBuf::from("/home/user/.local/share/podbox/myenv/Containerfile");
+    let q = quadlet::generate_build(&config, &cf_path);
+    insta::assert_snapshot!("quadlet_build", q);
+}
+
+#[test]
+fn snapshot_dbus_proxy_service() {
+    let mut config = load_config("full.toml");
+    config.dbus.talk = vec!["org.freedesktop.Notifications".into()];
+    config.dbus.own = vec!["org.mpris.MediaPlayer2.podbox_app".into()];
+    let unit = quadlet::generate_dbus_proxy_service("myenv", &config)
+        .expect("proxy service should be generated");
+    insta::assert_snapshot!("dbus_proxy_service", unit);
+}
+
+#[test]
+fn host_service_structure() {
+    let unit = quadlet::generate_host_service("myenv");
+    // NOT snapshot-tested because `generate_host_service` embeds
+    // `current_exe()` which differs per test-binary path.
+    assert!(unit.starts_with("[Unit]"));
+    assert!(unit.contains("Description=podbox host socket server -- myenv"));
+    assert!(unit.contains("[Service]"));
+    assert!(unit.contains("Type=simple"));
+    assert!(unit.contains("ExecStart="));
+    assert!(unit.contains("serve myenv"));
+    assert!(unit.contains("Restart=on-failure"));
+    assert!(unit.contains("RestartSec=2s"));
+    assert!(unit.contains("RuntimeDirectory=podbox"));
+    assert!(unit.contains("[Install]"));
+    assert!(unit.contains("WantedBy=myenv.socket"));
 }

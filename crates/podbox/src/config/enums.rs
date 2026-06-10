@@ -1,3 +1,5 @@
+use std::str::FromStr;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -13,6 +15,61 @@ impl ImageSource {
 
     pub fn is_build(&self) -> bool {
         matches!(self, Self::Build { .. })
+    }
+}
+
+/// Type-safe package manager identifier.
+///
+/// Replaces raw `&str` dispatch everywhere.  Always use the enum rather
+/// than hard-coding strings like `"dnf"` / `"apt"`.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PackageManager {
+    #[default]
+    Dnf,
+    Apt,
+    Pacman,
+    Apk,
+    Zypper,
+}
+
+impl PackageManager {
+    /// Canonical display name (e.g. `"dnf"`, `"apt"`).
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Dnf => "dnf",
+            Self::Apt => "apt",
+            Self::Pacman => "pacman",
+            Self::Apk => "apk",
+            Self::Zypper => "zypper",
+        }
+    }
+
+    /// Parse a string into a `PackageManager`, returning `None` for unknown
+    /// values (callers fall back to distro detection).
+    pub fn from_str_opt(s: &str) -> Option<Self> {
+        match s {
+            "dnf" => Some(Self::Dnf),
+            "apt" => Some(Self::Apt),
+            "pacman" => Some(Self::Pacman),
+            "apk" => Some(Self::Apk),
+            "zypper" => Some(Self::Zypper),
+            _ => None,
+        }
+    }
+}
+
+impl std::fmt::Display for PackageManager {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+impl FromStr for PackageManager {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Self::from_str_opt(s.trim()).ok_or_else(|| format!("unknown package manager: {s}"))
     }
 }
 

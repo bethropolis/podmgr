@@ -1,0 +1,16 @@
+---
+source: crates/podbox/tests/codegen_tests.rs
+assertion_line: 674
+expression: q
+---
+[Unit]
+Description=podbox host-guest socket -- myenv
+
+[Socket]
+ListenStream=%t/podbox/myenv.sock
+Service=myenv-host.service
+SocketMode=0600
+DirectoryMode=0700
+
+[Install]
+WantedBy=sockets.target

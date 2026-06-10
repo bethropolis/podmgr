@@ -1,4 +1,3 @@
-use std::io::Write;
 use std::os::unix::io::{FromRawFd, RawFd};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
@@ -6,6 +5,8 @@ use std::time::Duration;
 
 use crate::config::IntegrationConfig;
 use crate::protocol::{read_frame, write_frame, GuestMessage, HostMessage};
+
+mod handlers;
 
 /// Max number of concurrent host threads handling guest connections.
 ///
@@ -124,281 +125,25 @@ fn handle_connection(stream: &mut UnixStream, config: &IntegrationConfig) -> any
                 guest_version,
                 container,
                 capabilities,
-            } => {
-                if protocol_version != crate::protocol::PROTOCOL_VERSION {
-                    eprintln!(
-                        "Host: protocol mismatch — got v{}, expected v{}",
-                        protocol_version,
-                        crate::protocol::PROTOCOL_VERSION
-                    );
-                    write_frame(stream, &HostMessage::Shutdown)?;
-                    return Ok(());
-                }
-                eprintln!(
-                    "Host: Guest hello (v{}, container: {}, caps: {:?})",
-                    guest_version, container, capabilities
-                );
-                let mut accepted = Vec::new();
-                let mut rejected = Vec::new();
-                for cap in capabilities {
-                    let enabled = match cap.as_str() {
-                        "notify" => config.notify,
-                        "xdg_open" => config.xdg_open,
-                        "clipboard" => config.clipboard,
-                        "host_exec" => config.host_exec.enabled,
-                        _ => false,
-                    };
-                    if enabled {
-                        accepted.push(cap);
-                    } else {
-                        rejected.push(cap);
-                    }
-                }
-                let response = HostMessage::HelloAck { accepted, rejected };
-                write_frame(stream, &response)?;
-            }
+            } => handlers::handle_hello(stream, config, protocol_version, guest_version, container, capabilities)?,
             GuestMessage::Notify {
                 summary,
                 body,
                 urgency: _,
                 actions,
                 app_name: _,
-            } => {
-                if actions.is_empty() {
-                    let _ = notify_rust::Notification::new()
-                        .summary(&summary)
-                        .body(&body)
-                        .show();
-                } else {
-                    let mut notif = notify_rust::Notification::new();
-                    notif.summary(&summary).body(&body);
-                    for action in &actions {
-                        notif.action(&action.key, &action.label);
-                    }
-                    let handle = match notif.show() {
-                        Ok(h) => h,
-                        Err(_) => {
-                            let _ = write_frame(
-                                stream,
-                                &HostMessage::NotifyActionResult {
-                                    notification_id: 0,
-                                    action_key: String::new(),
-                                },
-                            );
-                            return Ok(());
-                        }
-                    };
-                    let mut chosen_key = String::new();
-                    handle.wait_for_action(|action| {
-                        chosen_key = action.to_string();
-                    });
-                    let _ = write_frame(
-                        stream,
-                        &HostMessage::NotifyActionResult {
-                            notification_id: 0,
-                            action_key: chosen_key,
-                        },
-                    );
-                }
-            }
-            GuestMessage::XdgOpen { uri } => {
-                if let Some(validated) = validate_uri(&uri) {
-                    if let Ok(mut child) = std::process::Command::new("xdg-open")
-                        .arg(&validated)
-                        .spawn()
-                    {
-                        let _ = child.wait();
-                    }
-                }
-            }
-            GuestMessage::ClipboardSet { text } => {
-                let mut child = std::process::Command::new("wl-copy")
-                    .stdin(std::process::Stdio::piped())
-                    .spawn()?;
-                if let Some(ref mut stdin) = child.stdin {
-                    let _ = stdin.write_all(text.as_bytes());
-                }
-                let _ = child.wait();
-            }
-            GuestMessage::ClipboardGet => {
-                let output = std::process::Command::new("wl-paste").output()?;
-                let text = String::from_utf8_lossy(&output.stdout);
-                let response = HostMessage::ClipboardData {
-                    text: text.trim().to_string(),
-                };
-                write_frame(stream, &response)?;
-            }
-            GuestMessage::HostExec { cmd, args } => {
-                if !config.host_exec.enabled {
-                    write_frame(
-                        stream,
-                        &HostMessage::HostExecStderr {
-                            data: "host-exec is disabled".into(),
-                        },
-                    )?;
-                    write_frame(stream, &HostMessage::HostExecDone { exit_code: 1 })?;
-                    continue;
-                }
-
-                let resolved = match config.host_exec.resolve(&cmd) {
-                    Some(p) => p,
-                    None => {
-                        let allowed = config
-                            .host_exec
-                            .allowlist
-                            .as_ref()
-                            .map(|m| m.keys().cloned().collect::<Vec<_>>().join(", "))
-                            .unwrap_or_default();
-                        write_frame(
-                            stream,
-                            &HostMessage::HostExecStderr {
-                                data: format!(
-                                    "Permission denied: '{}' is not in the host-exec allowlist\nAllowed commands: {}",
-                                    cmd,
-                                    allowed
-                                ),
-                            },
-                        )?;
-                        write_frame(stream, &HostMessage::HostExecDone { exit_code: 1 })?;
-                        continue;
-                    }
-                };
-
-                if let Err(msg) = validate_host_exec_args(&args) {
-                    write_frame(
-                        stream,
-                        &HostMessage::HostExecStderr {
-                            data: format!("Security violation: {}", msg),
-                        },
-                    )?;
-                    write_frame(stream, &HostMessage::HostExecDone { exit_code: 1 })?;
-                    continue;
-                }
-
-                match std::process::Command::new(resolved)
-                    .args(&args)
-                    .stdout(std::process::Stdio::piped())
-                    .stderr(std::process::Stdio::piped())
-                    .spawn()
-                {
-                    Ok(child) => {
-                        let output = child.wait_with_output()?;
-                        if !output.stdout.is_empty() {
-                            write_frame(
-                                stream,
-                                &HostMessage::HostExecStdout {
-                                    data: String::from_utf8_lossy(&output.stdout).to_string(),
-                                },
-                            )?;
-                        }
-                        if !output.stderr.is_empty() {
-                            write_frame(
-                                stream,
-                                &HostMessage::HostExecStderr {
-                                    data: String::from_utf8_lossy(&output.stderr).to_string(),
-                                },
-                            )?;
-                        }
-                        let code = output.status.code().unwrap_or(1);
-                        write_frame(stream, &HostMessage::HostExecDone { exit_code: code })?;
-                    }
-                    Err(e) => {
-                        let msg = if e.kind() == std::io::ErrorKind::NotFound {
-                            format!(
-                                "host-exec: '{}' not found in allowlist path or host $PATH",
-                                cmd
-                            )
-                        } else {
-                            format!("host-exec: failed to execute '{}': {}", cmd, e)
-                        };
-                        write_frame(stream, &HostMessage::HostExecStderr { data: msg })?;
-                        write_frame(stream, &HostMessage::HostExecDone { exit_code: 1 })?;
-                    }
-                }
-            }
+            } => handlers::handle_notify(stream, summary, body, actions)?,
+            GuestMessage::XdgOpen { uri } => handlers::handle_xdg_open(uri)?,
+            GuestMessage::ClipboardSet { text } => handlers::handle_clipboard_set(text)?,
+            GuestMessage::ClipboardGet => handlers::handle_clipboard_get(stream)?,
+            GuestMessage::HostExec { cmd, args } => handlers::handle_host_exec(stream, config, cmd, args)?,
         }
-    }
-}
-
-/// Validate arguments for host-exec, rejecting shell metacharacters and
-/// dangerous flag patterns that could alter the behaviour of a whitelisted
-/// binary (e.g. `git --exec-path=…`).
-fn validate_host_exec_args(args: &[String]) -> Result<(), String> {
-    for arg in args {
-        // Shell metacharacters (defence in depth – Command::new avoids a shell,
-        // but a whitelisted binary might interpret them unsafely).
-        if arg.contains(';')
-            || arg.contains('|')
-            || arg.contains('&')
-            || arg.contains('$')
-            || arg.contains('`')
-            || arg.contains('\n')
-            || arg.contains('\r')
-        {
-            return Err(format!("argument {:?} contains shell metacharacters", arg));
-        }
-        // Redirection operators — a whitelisted binary might write files
-        // when given `<` / `>` / `>>` arguments.
-        if arg.contains('<') || arg.contains('>') {
-            return Err(format!("argument {:?} contains redirection operators", arg));
-        }
-        // Shell glob / brace expansion wildcards.
-        if arg.contains('*') || arg.contains('?') || arg.contains('[') || arg.contains(']')
-            || arg.contains('{') || arg.contains('}')
-        {
-            return Err(format!("argument {:?} contains glob or brace characters", arg));
-        }
-        // Subshell / escape characters.
-        if arg.contains('(') || arg.contains(')') || arg.contains('\\') {
-            return Err(format!("argument {:?} contains subshell or escape characters", arg));
-        }
-        // Dangerous flag prefixes that can subvert a whitelisted binary.
-        let lower = arg.to_ascii_lowercase();
-        if lower.starts_with("--exec-path")
-            || lower.starts_with("--config")
-            || lower.starts_with("--plugin")
-            || lower.starts_with("--load")
-            || lower.starts_with("--module")
-            || lower.starts_with("--remote=")
-            || lower == "-o"
-        {
-            return Err(format!("argument {:?} uses a restricted flag pattern", arg));
-        }
-    }
-    Ok(())
-}
-
-/// Validate a URI from inside the container, returning a safe-to-open
-/// string (or `None` to refuse).
-///
-/// Allowed schemes are `http`, `https`, and `mailto`. Bare domains are
-/// auto-prefixed with `https://` so a user typing `example.com` works.
-fn validate_uri(uri: &str) -> Option<String> {
-    let s = uri.trim();
-    if s.is_empty() || s.starts_with('/') || s.starts_with('.') {
-        return None;
-    }
-
-    match url::Url::parse(s) {
-        Ok(parsed) => {
-            let scheme = parsed.scheme();
-            if scheme == "http" || scheme == "https" || scheme == "mailto" {
-                Some(s.to_string())
-            } else {
-                None
-            }
-        }
-        Err(url::ParseError::RelativeUrlWithoutBase) => {
-            Some(format!("https://{}", s))
-        }
-        _ => None,
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::validate_uri;
-    use super::validate_host_exec_args;
+    use super::handlers::{validate_uri, validate_host_exec_args};
 
     // ── validate_uri tests ──
 

@@ -5,6 +5,7 @@ use anyhow::Result;
 
 use crate::codegen::distros::DistroFamily;
 use crate::config::Config;
+use crate::config::PackageManager;
 
 #[derive(Debug, Clone)]
 pub struct DiffResult {
@@ -58,29 +59,35 @@ pub fn compute(config: &Config, name: &str, username: &str) -> Result<DiffResult
 }
 
 /// Map the explicit `manager` field or fall back to distro-based detection.
-fn resolve_manager(config: &Config) -> &'static str {
-    match config.image.packages.manager.trim().to_lowercase().as_str() {
-        "apt" => "apt",
-        "dnf" => "dnf",
-        "pacman" => "pacman",
-        "apk" => "apk",
-        _ => DistroFamily::from_base_image(&config.image.base).manager(),
+fn resolve_manager(config: &Config) -> PackageManager {
+    if config.image.packages.manager == PackageManager::Dnf
+        || config.image.packages.manager == PackageManager::Apt
+        || config.image.packages.manager == PackageManager::Pacman
+        || config.image.packages.manager == PackageManager::Apk
+    {
+        config.image.packages.manager
+    } else {
+        DistroFamily::from_base_image(&config.image.base).manager()
     }
+    // Zypper is valid but doesn't have a query command yet, so it falls
+    // through to the dnf/rpm default below.
 }
 
 /// Returns the command + arguments used to query *all* installed packages
 /// inside a running container for the given package manager.
-fn query_cmd(manager: &str) -> (&'static str, &'static [&'static str]) {
+fn query_cmd(manager: PackageManager) -> (&'static str, &'static [&'static str]) {
     match manager {
-        "apt" => ("dpkg-query", &["-W", "-f", "${Package}\n"]),
-        "pacman" => ("pacman", &["-Qqn"]),
-        "apk" => ("apk", &["list", "-I"]),
-        // dnf / rpm default
-        _ => ("rpm", &["-qa", "--queryformat", "%{NAME}\n"]),
+        PackageManager::Apt => ("dpkg-query", &["-W", "-f", "${Package}\n"]),
+        PackageManager::Pacman => ("pacman", &["-Qqn"]),
+        PackageManager::Apk => ("apk", &["list", "-I"]),
+        // dnf / rpm default (also used for Zypper)
+        PackageManager::Dnf | PackageManager::Zypper => {
+            ("rpm", &["-qa", "--queryformat", "%{NAME}\n"])
+        }
     }
 }
 
-fn query_packages(name: &str, username: &str, manager: &str) -> Result<String> {
+fn query_packages(name: &str, username: &str, manager: PackageManager) -> Result<String> {
     let (cmd, args) = query_cmd(manager);
     let output = Command::new("podman")
         .arg("exec")
@@ -101,7 +108,7 @@ fn query_packages(name: &str, username: &str, manager: &str) -> Result<String> {
 
 /// Parse a raw package-manager output into a sorted, deduplicated list of
 /// package names.
-fn parse_package_list(raw: &str, manager: &str) -> Vec<String> {
+fn parse_package_list(raw: &str, manager: PackageManager) -> Vec<String> {
     let mut pkgs: Vec<String> = raw
         .lines()
         .map(str::trim)
@@ -115,10 +122,10 @@ fn parse_package_list(raw: &str, manager: &str) -> Vec<String> {
 
 /// Normalize a single line of package-manager output to a plain package
 /// name.  Returns `None` for lines that should be skipped.
-fn normalize_package_name(line: &str, manager: &str) -> Option<String> {
+fn normalize_package_name(line: &str, manager: PackageManager) -> Option<String> {
     match manager {
         // apk list -I:  "zlib-1.3.1-r0 x86_64 {zlib}"  →  "zlib"
-        "apk" => {
+        PackageManager::Apk => {
             if let Some(start) = line.find('{') {
                 let end = line.find('}')?;
                 let name = line[start + 1..end].trim();
@@ -149,13 +156,13 @@ fn normalize_package_name(line: &str, manager: &str) -> Option<String> {
 fn compute_unexpected(
     container_set: &BTreeSet<String>,
     config_set: &BTreeSet<String>,
-    manager: &str,
+    manager: PackageManager,
 ) -> Vec<String> {
     let distro = match manager {
-        "apt" => DistroFamily::DebianLike,
-        "pacman" => DistroFamily::ArchLike,
-        "apk" => DistroFamily::AlpineLike,
-        _ => DistroFamily::FedoraLike,
+        PackageManager::Apt => DistroFamily::DebianLike,
+        PackageManager::Pacman => DistroFamily::ArchLike,
+        PackageManager::Apk => DistroFamily::AlpineLike,
+        PackageManager::Dnf | PackageManager::Zypper => DistroFamily::FedoraLike,
     };
     let base_set: BTreeSet<String> = distro.base_packages(None).into_iter().collect();
 
@@ -233,40 +240,40 @@ mod tests {
     #[test]
     fn parse_rpm_output() {
         let raw = "bash\ncoreutils\nsudo\nzlib\nbash\n";
-        let pkgs = parse_package_list(raw, "dnf");
+        let pkgs = parse_package_list(raw, PackageManager::Dnf);
         assert_eq!(pkgs, vec!["bash", "coreutils", "sudo", "zlib"]);
     }
 
     #[test]
     fn parse_dpkg_output() {
         let raw = "bash\ncoreutils\nsudo\nzlib\n";
-        let pkgs = parse_package_list(raw, "apt");
+        let pkgs = parse_package_list(raw, PackageManager::Apt);
         assert_eq!(pkgs, vec!["bash", "coreutils", "sudo", "zlib"]);
     }
 
     #[test]
     fn parse_pacman_output() {
         let raw = "bash\ncoreutils\nsudo\nzlib\n";
-        let pkgs = parse_package_list(raw, "pacman");
+        let pkgs = parse_package_list(raw, PackageManager::Pacman);
         assert_eq!(pkgs, vec!["bash", "coreutils", "sudo", "zlib"]);
     }
 
     #[test]
     fn parse_apk_output() {
         let raw = "zlib-1.3.1-r0 x86_64 {zlib}\nalpine-base-3.20.0 x86_64 {alpine-base}\n";
-        let pkgs = parse_package_list(raw, "apk");
+        let pkgs = parse_package_list(raw, PackageManager::Apk);
         assert_eq!(pkgs, vec!["alpine-base", "zlib"]);
     }
 
     #[test]
     fn parse_empty_output() {
-        let pkgs = parse_package_list("", "dnf");
+        let pkgs = parse_package_list("", PackageManager::Dnf);
         assert!(pkgs.is_empty());
     }
 
     #[test]
     fn parse_whitespace_only() {
-        let pkgs = parse_package_list("  \n  \n", "dnf");
+        let pkgs = parse_package_list("  \n  \n", PackageManager::Dnf);
         assert!(pkgs.is_empty());
     }
 
@@ -281,7 +288,7 @@ mod tests {
         let config: BTreeSet<String> = ["bash"].iter().map(|s| s.to_string()).collect();
         // sudo and curl are base packages, should NOT be unexpected.
         // unrecognized-tool is NOT a base package → unexpected.
-        let unexpected = compute_unexpected(&container, &config, "dnf");
+        let unexpected = compute_unexpected(&container, &config, PackageManager::Dnf);
         assert_eq!(unexpected, vec!["unrecognized-tool"]);
     }
 

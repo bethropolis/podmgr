@@ -43,14 +43,14 @@ impl DistroFamily {
         }
     }
 
-    pub fn manager(&self) -> &'static str {
+    pub fn manager(&self) -> crate::config::PackageManager {
         match self {
-            Self::DebianLike => "apt",
-            Self::FedoraLike => "dnf",
-            Self::ArchLike => "pacman",
-            Self::AlpineLike => "apk",
-            Self::SuseLike => "zypper",
-            Self::Unknown => "dnf",
+            Self::DebianLike => crate::config::PackageManager::Apt,
+            Self::FedoraLike => crate::config::PackageManager::Dnf,
+            Self::ArchLike => crate::config::PackageManager::Pacman,
+            Self::AlpineLike => crate::config::PackageManager::Apk,
+            Self::SuseLike => crate::config::PackageManager::Zypper,
+            Self::Unknown => crate::config::PackageManager::Dnf,
         }
     }
 
@@ -193,7 +193,7 @@ pub fn detect_host_locale() -> Option<String> {
         .filter(|s| !s.is_empty())
 }
 
-pub fn detect_package_manager(image: &str) -> &'static str {
+pub fn detect_package_manager(image: &str) -> crate::config::PackageManager {
     DistroFamily::from_base_image(image).manager()
 }
 

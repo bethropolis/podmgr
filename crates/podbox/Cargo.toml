@@ -33,4 +33,6 @@ podbox-protocol = { path = "../podbox-protocol" }
 
 [dev-dependencies]
 assert_cmd = "2.0"
+insta      = { version = "1.41", features = ["json"] }
 predicates = "3.1"
+tempfile   = "3.15"

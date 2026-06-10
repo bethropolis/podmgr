@@ -6,6 +6,18 @@ use serde::{Deserialize, Serialize};
 /// additions (new optional message types) do NOT increment this.
 pub const PROTOCOL_VERSION: u32 = 1;
 
+/// Guest protocol capability identifiers.
+///
+/// Single source of truth — always use these constants in match arms,
+/// construction, and capability negotiation rather than inline strings.
+pub const CAP_NOTIFY: &str = "notify";
+pub const CAP_XDG_OPEN: &str = "xdg_open";
+pub const CAP_CLIPBOARD: &str = "clipboard";
+pub const CAP_HOST_EXEC: &str = "host_exec";
+
+/// All known capabilities in negotiation order.
+pub const ALL_CAPABILITIES: &[&str] = &[CAP_NOTIFY, CAP_XDG_OPEN, CAP_CLIPBOARD, CAP_HOST_EXEC];
+
 /// Messages sent from guest to host.
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]

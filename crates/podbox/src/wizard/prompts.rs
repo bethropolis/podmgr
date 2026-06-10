@@ -66,7 +66,7 @@ pub(super) fn prompt_custom_image() -> anyhow::Result<(crate::config::Config, St
                 .interact_text()?;
         let mut c = crate::config::Config::embedded();
         c.image.base = base.clone();
-        c.image.packages.manager = detect_package_manager(&base).to_string();
+        c.image.packages.manager = detect_package_manager(&base);
         let name = base
             .split_once(':')
             .map(|(n, _)| n)
@@ -122,7 +122,7 @@ pub(super) fn prompt_customize_profile(
     Ok(cfg)
 }
 
-pub(super) fn detect_package_manager(image: &str) -> &'static str {
+pub(super) fn detect_package_manager(image: &str) -> crate::config::PackageManager {
     crate::codegen::distros::detect_package_manager(image)
 }
 
@@ -377,34 +377,61 @@ mod tests {
 
     #[test]
     fn detect_package_manager_dnf() {
-        assert_eq!(detect_package_manager("fedora:44"), "dnf");
-        assert_eq!(detect_package_manager("centos:stream"), "dnf");
+        assert_eq!(
+            detect_package_manager("fedora:44"),
+            crate::config::PackageManager::Dnf
+        );
+        assert_eq!(
+            detect_package_manager("centos:stream"),
+            crate::config::PackageManager::Dnf
+        );
         assert_eq!(
             detect_package_manager("registry.fedoraproject.org/fedora:41"),
-            "dnf"
+            crate::config::PackageManager::Dnf
         );
     }
 
     #[test]
     fn detect_package_manager_pacman() {
-        assert_eq!(detect_package_manager("archlinux:latest"), "pacman");
-        assert_eq!(detect_package_manager("cachyos:latest"), "pacman");
-        assert_eq!(detect_package_manager("manjaro:latest"), "pacman");
+        assert_eq!(
+            detect_package_manager("archlinux:latest"),
+            crate::config::PackageManager::Pacman
+        );
+        assert_eq!(
+            detect_package_manager("cachyos:latest"),
+            crate::config::PackageManager::Pacman
+        );
+        assert_eq!(
+            detect_package_manager("manjaro:latest"),
+            crate::config::PackageManager::Pacman
+        );
     }
 
     #[test]
     fn detect_package_manager_apt() {
-        assert_eq!(detect_package_manager("ubuntu:24.04"), "apt");
-        assert_eq!(detect_package_manager("debian:bookworm"), "apt");
+        assert_eq!(
+            detect_package_manager("ubuntu:24.04"),
+            crate::config::PackageManager::Apt
+        );
+        assert_eq!(
+            detect_package_manager("debian:bookworm"),
+            crate::config::PackageManager::Apt
+        );
     }
 
     #[test]
     fn detect_package_manager_apk() {
-        assert_eq!(detect_package_manager("alpine:latest"), "apk");
+        assert_eq!(
+            detect_package_manager("alpine:latest"),
+            crate::config::PackageManager::Apk
+        );
     }
 
     #[test]
     fn detect_package_manager_fallback() {
-        assert_eq!(detect_package_manager("unknown:latest"), "dnf");
+        assert_eq!(
+            detect_package_manager("unknown:latest"),
+            crate::config::PackageManager::Dnf
+        );
     }
 }

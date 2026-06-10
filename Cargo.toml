@@ -3,7 +3,7 @@ members  = ["crates/podbox", "crates/podbox-guest", "crates/podbox-protocol"]
 resolver = "2"
 
 [workspace.package]
-version = "0.4.4"
+version = "0.4.5"
 
 [workspace.dependencies]
 serde      = { version = "1.0", features = ["derive"] }

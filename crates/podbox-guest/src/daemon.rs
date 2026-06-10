@@ -22,12 +22,10 @@ pub fn run() -> Result<(), GuestError> {
     let mut host_stream = socket::connect_to_host(&host_socket_path)?;
 
     // 3. Handshake
-    let all_caps = vec![
-        "notify".to_string(),
-        "xdg_open".to_string(),
-        "clipboard".to_string(),
-        "host_exec".to_string(),
-    ];
+    let all_caps: Vec<String> = crate::protocol::ALL_CAPABILITIES
+        .iter()
+        .map(|&s| s.to_string())
+        .collect();
     let accepted = socket::handshake(&mut host_stream, &container_name, &all_caps)?;
     let accepted_set: HashSet<String> = accepted.iter().cloned().collect();
     eprintln!("podbox-guest: accepted capabilities: {:?}", accepted);
@@ -55,10 +53,10 @@ fn install_interceptors(
     let self_path_str = self_path.to_string_lossy();
 
     let symlinks = vec![
-        ("notify", "notify-send"),
-        ("xdg_open", "xdg-open"),
-        ("clipboard", "podbox-clipboard"),
-        ("host_exec", "host-exec"),
+        (crate::protocol::CAP_NOTIFY, "notify-send"),
+        (crate::protocol::CAP_XDG_OPEN, "xdg-open"),
+        (crate::protocol::CAP_CLIPBOARD, "podbox-clipboard"),
+        (crate::protocol::CAP_HOST_EXEC, "host-exec"),
     ];
 
     for (cap, name) in symlinks {
@@ -95,7 +93,7 @@ fn check_version_drift(
         "Container '{container_name}' was built with podbox {baked_host_version} but host is now {guest_version}. Run `podbox build --rebuild`."
     );
 
-    if accepted.contains("notify") {
+    if accepted.contains(crate::protocol::CAP_NOTIFY) {
         let msg = crate::protocol::GuestMessage::Notify {
             summary: summary.to_string(),
             body,

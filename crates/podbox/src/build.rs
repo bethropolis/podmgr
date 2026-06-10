@@ -184,12 +184,12 @@ fn run_prebuilt(config: &Config, dry_run: bool, rebuild: bool) -> Result<()> {
 /// Respects the explicit `manager` field in the config, falling back to
 /// name-based detection via `DistroFamily`.
 fn resolve_prebuilt_distro(config: &Config) -> DistroFamily {
-    match config.image.packages.manager.trim().to_lowercase().as_str() {
-        "apt" => DistroFamily::DebianLike,
-        "dnf" => DistroFamily::FedoraLike,
-        "pacman" => DistroFamily::ArchLike,
-        "apk" => DistroFamily::AlpineLike,
-        _ => DistroFamily::from_base_image(&config.image.base),
+    match config.image.packages.manager {
+        crate::config::PackageManager::Apt => DistroFamily::DebianLike,
+        crate::config::PackageManager::Dnf => DistroFamily::FedoraLike,
+        crate::config::PackageManager::Pacman => DistroFamily::ArchLike,
+        crate::config::PackageManager::Apk => DistroFamily::AlpineLike,
+        crate::config::PackageManager::Zypper => DistroFamily::SuseLike,
     }
 }
 

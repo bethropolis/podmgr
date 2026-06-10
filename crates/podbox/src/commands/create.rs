@@ -89,7 +89,7 @@ pub(super) fn derive_container_name(image: &str, custom_name: Option<&str>) -> S
     }
 }
 
-pub(super) fn detect_package_manager(image: &str) -> &'static str {
+pub(super) fn detect_package_manager(image: &str) -> podbox::config::PackageManager {
     distros::detect_package_manager(image)
 }
 
@@ -201,7 +201,7 @@ pub fn run_init(
         .unwrap_or_else(|| PathBuf::from("~"))
         .join("containers")
         .join(&container_name);
-    cfg.image.packages.manager = detect_package_manager(base).to_string();
+    cfg.image.packages.manager = detect_package_manager(base);
 
     cfg.container.shell.clear();
     podbox::wizard::apply_shell_defaults(&mut cfg, &shell_info);
@@ -345,7 +345,7 @@ pub fn run_create(
             .unwrap_or_else(|| PathBuf::from("~"))
             .join("containers")
             .join(&container_name);
-        cfg.image.packages.manager = detect_package_manager(image).to_string();
+        cfg.image.packages.manager = detect_package_manager(image);
         cfg.container.shell.clear();
         podbox::wizard::apply_shell_defaults(&mut cfg, &shell_info);
         if let Some(pkgs) = packages {

@@ -55,31 +55,46 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     let home_in_container = "/home/%u";
     let mut lines: Vec<String> = Vec::new();
 
-    // [Unit]
+    emit_unit(&mut lines, config, name);
+    emit_container_image(&mut lines, config, name, home_in_container, env);
+    emit_volumes(&mut lines, config, xdg, env, name, home_in_container);
+    emit_env(&mut lines, config, name, env);
+    emit_gpu(&mut lines, config, env);
+    emit_auto_update(&mut lines, config);
+    emit_podman_args(&mut lines, config);
+    emit_service_section(&mut lines, config);
+    emit_install_section(&mut lines, config);
+
+    lines.join("\n")
+}
+
+fn emit_unit(lines: &mut Vec<String>, config: &Config, name: &str) {
     lines.push("[Unit]".into());
     lines.push(format!("Description=podbox -- {}", name));
     lines.push(format!("Requires={}.socket", name));
     lines.push(format!("After={}.socket", name));
-
     for dep in &config.systemd.requires {
         lines.push(format!("Requires={}", dep));
     }
     for dep in &config.systemd.after {
         lines.push(format!("After={}", dep));
     }
-
-    // D-Bus proxy dependency
     if config.use_dbus_proxy() {
         lines.push(format!("Requires={}-proxy.service", name));
         lines.push(format!("After={}-proxy.service", name));
     }
-
     lines.push(String::new());
+}
 
-    // [Container]
+fn emit_container_image(
+    lines: &mut Vec<String>,
+    config: &Config,
+    name: &str,
+    home_in_container: &str,
+    env: &HostEnv,
+) {
     lines.push("[Container]".into());
     if config.image.source().is_prebuilt() && config.image.packages.install.is_empty() {
-        // No packages to install — reference the prebuilt image directly.
         let ref_str = match config.image.source() {
             crate::config::ImageSource::Prebuilt { ref_str } => ref_str,
             _ => config.image.base.clone(),
@@ -88,7 +103,6 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         lines.push(format!("Retry={}", config.image.pull_retry));
         lines.push(format!("RetryDelay={}", config.image.pull_retry_delay));
     } else {
-        // Packages to install (or custom build) — use the local overlay image.
         lines.push(format!(
             "Image=localhost/podbox-{}:latest",
             config.image.name
@@ -118,20 +132,29 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     lines.push("Environment=HOST_GID=%G".into());
     lines.push("Environment=PATH=/run/podbox/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin".into());
     lines.push(String::new());
+}
 
+fn emit_volumes(
+    lines: &mut Vec<String>,
+    config: &Config,
+    xdg: &ResolvedXdgDirs,
+    env: &HostEnv,
+    name: &str,
+    home_in_container: &str,
+) {
     // Isolated custom home
     let host_home = config.container.home.to_string_lossy().to_string();
     lines.push(format!("Volume={host_home}:{home_in_container}:Z",));
     lines.push(String::new());
 
     // Selective XDG dirs
-    emit_xdg_dir(&mut lines, "Documents", &xdg.documents, home_in_container);
-    emit_xdg_dir(&mut lines, "Downloads", &xdg.downloads, home_in_container);
-    emit_xdg_dir(&mut lines, "Pictures", &xdg.pictures, home_in_container);
-    emit_xdg_dir(&mut lines, "Music", &xdg.music, home_in_container);
-    emit_xdg_dir(&mut lines, "Videos", &xdg.videos, home_in_container);
-    emit_xdg_dir(&mut lines, "Desktop", &xdg.desktop, home_in_container);
-    emit_xdg_dir(&mut lines, "Projects", &xdg.projects, home_in_container);
+    emit_xdg_dir(lines, "Documents", &xdg.documents, home_in_container);
+    emit_xdg_dir(lines, "Downloads", &xdg.downloads, home_in_container);
+    emit_xdg_dir(lines, "Pictures", &xdg.pictures, home_in_container);
+    emit_xdg_dir(lines, "Music", &xdg.music, home_in_container);
+    emit_xdg_dir(lines, "Videos", &xdg.videos, home_in_container);
+    emit_xdg_dir(lines, "Desktop", &xdg.desktop, home_in_container);
+    emit_xdg_dir(lines, "Projects", &xdg.projects, home_in_container);
 
     if xdg.documents.is_some()
         || xdg.downloads.is_some()
@@ -193,14 +216,6 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         lines.push("Volume=/etc/timezone:/etc/timezone:ro".into());
     }
     if env.host_has_localtime || env.host_has_timezone_file {
-        lines.push(String::new());
-    }
-
-    // Locale environment
-    if let Some(ref locale) = env.host_locale {
-        lines.push(format!("Environment=LANG={}", locale));
-        lines.push(format!("Environment=LC_ALL={}", locale));
-        lines.push(format!("Environment=LC_CTYPE={}", locale));
         lines.push(String::new());
     }
 
@@ -281,6 +296,29 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     ));
     lines.push(String::new());
 
+    // Extra mounts
+    for mount in &config.container.mounts.extra {
+        lines.push(format!("Volume={}", mount));
+    }
+    if !config.container.mounts.extra.is_empty() {
+        lines.push(String::new());
+    }
+}
+
+fn emit_env(
+    lines: &mut Vec<String>,
+    config: &Config,
+    name: &str,
+    _env: &HostEnv,
+) {
+    // Locale environment
+    if let Some(ref locale) = _env.host_locale {
+        lines.push(format!("Environment=LANG={}", locale));
+        lines.push(format!("Environment=LC_ALL={}", locale));
+        lines.push(format!("Environment=LC_CTYPE={}", locale));
+        lines.push(String::new());
+    }
+
     // Extra user env
     for (key, value) in &config.container.env {
         if key.chars().all(|c| c.is_alphanumeric() || c == '_') {
@@ -301,16 +339,9 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
     }
     lines.push(format!("Environment=PODBOX_CONTAINER={}", name));
     lines.push(String::new());
+}
 
-    // Extra mounts
-    for mount in &config.container.mounts.extra {
-        lines.push(format!("Volume={}", mount));
-    }
-    if !config.container.mounts.extra.is_empty() {
-        lines.push(String::new());
-    }
-
-    // GPU
+fn emit_gpu(lines: &mut Vec<String>, config: &Config, env: &HostEnv) {
     match config.integration.gpu {
         GpuMode::Enabled => {
             lines.push("AddDevice=/dev/dri".into());
@@ -342,8 +373,9 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         }
         GpuMode::Disabled => {}
     }
+}
 
-    // Auto-update
+fn emit_auto_update(lines: &mut Vec<String>, config: &Config) {
     if config.lifecycle.auto_update {
         if config.image.source().is_prebuilt() {
             lines.push("Label=io.containers.autoupdate=registry".into());
@@ -356,19 +388,19 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         }
         lines.push(String::new());
     }
+}
 
-    // Podman init + working directory
+fn emit_podman_args(lines: &mut Vec<String>, config: &Config) {
     lines.push("PodmanArgs=--init".into());
     lines.push("PodmanArgs=--workdir=/home/%u".into());
     lines.push(String::new());
-
-    // Reload command
     if let Some(ref cmd) = config.container.reload_cmd {
         lines.push(format!("ReloadCmd={}", cmd));
         lines.push(String::new());
     }
+}
 
-    // [Service]
+fn emit_service_section(lines: &mut Vec<String>, config: &Config) {
     lines.push("[Service]".into());
     lines.push("Restart=on-failure".into());
     lines.push("RestartSec=2s".into());
@@ -378,14 +410,13 @@ pub fn generate_container(config: &Config, env: &HostEnv, xdg: &ResolvedXdgDirs)
         lines.push("AutoRemove=true".into());
     }
     lines.push(String::new());
+}
 
-    // [Install]
+fn emit_install_section(lines: &mut Vec<String>, config: &Config) {
     lines.push("[Install]".into());
     if config.lifecycle.autostart {
         lines.push("WantedBy=default.target".into());
     }
-
-    lines.join("\n")
 }
 
 /// Generate the companion D-Bus proxy `.service` unit.

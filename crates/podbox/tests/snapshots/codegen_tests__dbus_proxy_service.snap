@@ -1,0 +1,18 @@
+---
+source: crates/podbox/tests/codegen_tests.rs
+assertion_line: 706
+expression: unit
+---
+[Unit]
+Description=D-Bus Proxy for podbox container myenv
+PartOf=myenv.service
+
+[Service]
+Type=simple
+RuntimeDirectory=podbox
+ExecStart=/usr/bin/xdg-dbus-proxy unix:path=%t/bus %t/podbox/myenv-dbus.sock --filter --talk=org.freedesktop.Notifications --talk=org.freedesktop.portal.* --own=org.mpris.MediaPlayer2.podbox_app
+Restart=on-failure
+RestartSec=1s
+
+[Install]
+WantedBy=myenv.service

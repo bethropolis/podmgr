@@ -1,0 +1,10 @@
+---
+source: crates/podbox/tests/codegen_tests.rs
+assertion_line: 682
+expression: q
+---
+[Build]
+ImageTag=localhost/podbox-myenv:latest
+File=/home/user/.local/share/podbox/myenv/Containerfile
+Retry=3
+RetryDelay=5s

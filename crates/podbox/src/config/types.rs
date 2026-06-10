@@ -9,7 +9,7 @@ use crate::config::defaults::{
     is_default_packages, is_default_pkg_mgr, is_default_pull_retry, is_default_pull_retry_delay,
     is_default_run, is_default_shell, is_empty_hashmap, is_false, is_true,
 };
-use crate::config::enums::{GpuMode, ImageSource, OnStop, XdgDirValue};
+use crate::config::enums::{GpuMode, ImageSource, OnStop, PackageManager, XdgDirValue};
 use crate::config::expand_tilde;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -57,7 +57,7 @@ pub struct PackageConfig {
         default = "default_package_manager",
         skip_serializing_if = "is_default_pkg_mgr"
     )]
-    pub manager: String,
+    pub manager: PackageManager,
 }
 
 impl Default for PackageConfig {

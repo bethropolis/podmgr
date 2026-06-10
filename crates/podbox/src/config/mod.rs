@@ -10,7 +10,7 @@ pub mod types;
 pub mod validation;
 
 pub use defaults::EMBEDDED_DEFAULT;
-pub use enums::{GpuMode, ImageSource, OnStop, XdgDirValue};
+pub use enums::{GpuMode, ImageSource, OnStop, PackageManager, XdgDirValue};
 pub use fs::{
     active_context_path, clear_active_context, config_dir, expand_tilde, find_definition,
     list_configs, read_active_context, write_active_context,
