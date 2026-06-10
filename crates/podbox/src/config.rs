@@ -50,7 +50,7 @@ pub struct ImageConfig {
     /// Delay between pull retries (Podman duration, e.g. "5s", "2m").
     #[serde(
         default = "default_pull_retry_delay",
-        skip_serializing_if = "is_default_pull_delay"
+        skip_serializing_if = "is_default_pull_retry_delay"
     )]
     pub pull_retry_delay: String,
     #[serde(default, skip_serializing_if = "is_default_packages")]
@@ -733,7 +733,7 @@ fn is_default_pkg_mgr(v: &str) -> bool {
 fn is_default_pull_retry(v: &u32) -> bool {
     *v == 3
 }
-fn is_default_pull_delay(v: &str) -> bool {
+fn is_default_pull_retry_delay(v: &str) -> bool {
     v == "5s"
 }
 

@@ -1,8 +1,26 @@
 use std::os::unix::net::UnixStream;
-use std::path::Path;
+use std::path::{Path, PathBuf};
+use std::env;
 
 use crate::error::GuestError;
 use crate::protocol::{read_frame, write_frame, GuestMessage, HostMessage};
+
+/// Container name from the environment.
+pub fn container_name() -> Result<String, GuestError> {
+    env::var("PODBOX_CONTAINER")
+        .or_else(|_| env::var("PODMGR_CONTAINER"))
+        .map_err(|_| GuestError::ContainerNameMissing)
+}
+
+/// Host socket path inside the container.
+pub fn host_socket_path() -> Result<PathBuf, GuestError> {
+    let cn = container_name()?;
+    let xdg_runtime = env::var("XDG_RUNTIME_DIR")
+        .unwrap_or_else(|_| format!("/run/user/{}", nix::unistd::getuid()));
+    Ok(PathBuf::from(&xdg_runtime)
+        .join("podbox")
+        .join(format!("{}.sock", cn)))
+}
 
 /// Connect to the host socket with retries using sleep-based backoff.
 pub fn connect_to_host(socket_path: &Path) -> Result<UnixStream, GuestError> {
@@ -59,14 +77,7 @@ pub fn handshake(
 
 /// Open a fresh connection to the host socket, send one message, and close.
 pub fn connect_and_send_oneshot(msg: &GuestMessage) -> Result<(), GuestError> {
-    let container_name = std::env::var("PODBOX_CONTAINER")
-        .or_else(|_| std::env::var("PODMGR_CONTAINER"))
-        .map_err(|_| GuestError::ContainerNameMissing)?;
-    let xdg_runtime = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| format!("/run/user/{}", nix::unistd::getuid()));
-    let socket_path = std::path::PathBuf::from(&xdg_runtime)
-        .join("podbox")
-        .join(format!("{}.sock", container_name));
+    let socket_path = host_socket_path()?;
     let mut stream = UnixStream::connect(&socket_path)?;
     write_frame(&mut stream, msg)?;
     Ok(())

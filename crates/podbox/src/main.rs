@@ -190,7 +190,7 @@ fn run() -> Result<()> {
         }
 
         Command::Shell { name: _ } | Command::Enter { name: _ } => {
-            commands::runtime::run_shell_enter(&config, &name, cli.dry_run)?;
+            commands::runtime::run_shell_enter(&env, &config, &name, cli.dry_run)?;
         }
 
         Command::Exec {

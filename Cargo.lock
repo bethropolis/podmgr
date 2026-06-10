@@ -1086,7 +1086,7 @@ dependencies = [
 
 [[package]]
 name = "podbox"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -1112,7 +1112,7 @@ dependencies = [
 
 [[package]]
 name = "podbox-guest"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "anyhow",
  "nix",
@@ -1124,7 +1124,7 @@ dependencies = [
 
 [[package]]
 name = "podbox-protocol"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "serde",
  "serde_json",

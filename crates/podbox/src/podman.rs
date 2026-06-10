@@ -16,12 +16,14 @@ impl PodmanVersion {
     }
 }
 
-static PODMAN_VERSION: OnceLock<anyhow::Result<PodmanVersion>> = OnceLock::new();
+static PODMAN_VERSION: OnceLock<anyhow::Result<PodmanVersion>> = OnceLock::new(); // errors intentionally cached — podman availability doesn't change mid-process
 
 fn parse_version_string(s: &str) -> PodmanVersion {
     let s = s.trim();
     // Strip anything after a space (e.g. "5.3.0 (ok)" -> "5.3.0")
     let s = s.split_whitespace().next().unwrap_or(s);
+    // Strip Debian-style epoch prefix (e.g. "100:5.3.0" -> "5.3.0")
+    let s = s.rsplit_once(':').map(|(_, after)| after).unwrap_or(s);
     let mut parts = s.splitn(3, '.');
     PodmanVersion {
         major: parts.next().and_then(|p| p.parse().ok()).unwrap_or(0),
@@ -57,6 +59,75 @@ pub fn podman_version() -> anyhow::Result<&'static PodmanVersion> {
 #[allow(dead_code)]
 pub(crate) fn set_test_version(ver: PodmanVersion) {
     PODMAN_VERSION.set(Ok(ver)).ok();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_standard_version() {
+        let v = parse_version_string("5.3.0");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+    }
+
+    #[test]
+    fn parses_version_with_epoch() {
+        let v = parse_version_string("100:5.3.0");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+    }
+
+    #[test]
+    fn parses_version_with_parenthetical() {
+        let v = parse_version_string("5.3.0 (ok)");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+    }
+
+    #[test]
+    fn parses_version_with_leading_trailing_whitespace() {
+        let v = parse_version_string("  5.3.0  ");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+    }
+
+    #[test]
+    fn handles_single_component() {
+        let v = parse_version_string("5");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 0, patch: 0 });
+    }
+
+    #[test]
+    fn handles_two_components() {
+        let v = parse_version_string("5.3");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 3, patch: 0 });
+    }
+
+    #[test]
+    fn handles_empty_string() {
+        let v = parse_version_string("");
+        assert_eq!(v, PodmanVersion { major: 0, minor: 0, patch: 0 });
+    }
+
+    #[test]
+    fn handles_non_numeric() {
+        let v = parse_version_string("abc");
+        assert_eq!(v, PodmanVersion { major: 0, minor: 0, patch: 0 });
+    }
+
+    #[test]
+    fn handles_partial_numeric() {
+        let v = parse_version_string("5.abc.0");
+        assert_eq!(v, PodmanVersion { major: 5, minor: 0, patch: 0 });
+    }
+
+    #[test]
+    fn version_at_least_works() {
+        let v = PodmanVersion { major: 5, minor: 6, patch: 0 };
+        assert!(v.at_least(5, 6));
+        assert!(v.at_least(4, 0));
+        assert!(v.at_least(5, 5));
+        assert!(!v.at_least(5, 7));
+        assert!(!v.at_least(6, 0));
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

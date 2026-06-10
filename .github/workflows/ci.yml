@@ -63,6 +63,9 @@ jobs:
       - name: Build guest (static musl)
         run: cargo build -p podbox-guest --release --target x86_64-unknown-linux-musl
 
+      - name: Run guest tests (musl)
+        run: cargo test -p podbox-guest --target x86_64-unknown-linux-musl
+
       - name: Verify static linkage
         run: |
           file target/x86_64-unknown-linux-musl/release/podbox-guest | grep -q "static"

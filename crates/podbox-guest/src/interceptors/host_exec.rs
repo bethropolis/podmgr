@@ -1,6 +1,6 @@
 use std::os::unix::net::UnixStream;
 
-use crate::interceptors::host_socket_path;
+use crate::socket::host_socket_path;
 use crate::protocol::{read_frame, write_frame, GuestMessage, HostMessage};
 
 pub fn run(args: &[String]) {

@@ -9,8 +9,7 @@ use podbox::env::HostEnv;
 use podbox::podman::{query_state, ContainerState};
 
 /// Enter a shell inside the container.
-pub fn run_shell_enter(config: &Config, name: &str, dry_run: bool) -> Result<()> {
-    let env = podbox::env::resolve()?;
+pub fn run_shell_enter(env: &HostEnv, config: &Config, name: &str, dry_run: bool) -> Result<()> {
     let tty_flag = if distros::is_tty() {
         "-it"
     } else {

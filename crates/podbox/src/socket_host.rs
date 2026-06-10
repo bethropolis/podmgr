@@ -398,6 +398,9 @@ fn validate_uri(uri: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::validate_uri;
+    use super::validate_host_exec_args;
+
+    // ── validate_uri tests ──
 
     #[test]
     fn allows_http_https_mailto() {
@@ -442,5 +445,81 @@ mod tests {
             validate_uri("  https://example.com  "),
             Some("https://example.com".to_string())
         );
+    }
+
+    // ── validate_host_exec_args tests ──
+
+    #[test]
+    fn accepts_plain_args() {
+        assert!(validate_host_exec_args(&["ls".into()]).is_ok());
+        assert!(validate_host_exec_args(&["ls".into(), "-la".into(), "/tmp".into()]).is_ok());
+        assert!(validate_host_exec_args(&["git".into(), "log".into(), "--oneline".into()]).is_ok());
+    }
+
+    #[test]
+    fn rejects_shell_metacharacters() {
+        assert!(validate_host_exec_args(&["echo".into(), "foo;bar".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), "foo|bar".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), "foo&bar".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), "$PATH".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), "`ls`".into()]).is_err());
+    }
+
+    #[test]
+    fn rejects_redirection_operators() {
+        assert!(validate_host_exec_args(&["cat".into(), "<file".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), ">file".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), ">>file".into()]).is_err());
+    }
+
+    #[test]
+    fn rejects_glob_and_brace_chars() {
+        assert!(validate_host_exec_args(&["ls".into(), "*.rs".into()]).is_err());
+        assert!(validate_host_exec_args(&["ls".into(), "file?".into()]).is_err());
+        assert!(validate_host_exec_args(&["ls".into(), "[abc]".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), "{a,b}".into()]).is_err());
+    }
+
+    #[test]
+    fn rejects_subshell_and_escape_chars() {
+        assert!(validate_host_exec_args(&["echo".into(), "$(whoami)".into()]).is_err());
+        assert!(validate_host_exec_args(&["echo".into(), "line1\nline2".into()]).is_err());
+    }
+
+    #[test]
+    fn rejects_restricted_flag_patterns() {
+        assert!(validate_host_exec_args(&["git".into(), "--exec-path=/tmp".into()]).is_err());
+        assert!(validate_host_exec_args(&["git".into(), "--config=user.name".into()]).is_err());
+        assert!(validate_host_exec_args(&["vim".into(), "--plugin=malicious".into()]).is_err());
+        assert!(validate_host_exec_args(&["python".into(), "--load=malicious".into()]).is_err());
+        assert!(validate_host_exec_args(&["python".into(), "--module=malicious".into()]).is_err());
+        assert!(validate_host_exec_args(&["git".into(), "--remote=evil".into()]).is_err());
+        assert!(validate_host_exec_args(&["ssh".into(), "-o".into(), "StrictHostKeyChecking=no".into()]).is_err());
+    }
+
+    #[test]
+    fn restricted_flag_detection_is_case_insensitive() {
+        assert!(validate_host_exec_args(&["git".into(), "--EXEC-PATH=/tmp".into()]).is_err());
+        assert!(validate_host_exec_args(&["GIT".into(), "--Config=evil".into()]).is_err());
+    }
+
+    #[test]
+    fn does_not_restrict_safe_flags() {
+        assert!(validate_host_exec_args(&["git".into(), "--exec".into()]).is_ok());
+        assert!(validate_host_exec_args(&["git".into(), "--exec-path-is-ok".into()]).is_err(), "--exec-path prefix still blocked");
+        assert!(validate_host_exec_args(&["ls".into(), "--color=auto".into()]).is_ok());
+        assert!(validate_host_exec_args(&["cargo".into(), "--offline".into()]).is_ok());
+    }
+
+    #[test]
+    fn rejects_empty_args_gracefully() {
+        assert!(validate_host_exec_args(&[String::new()]).is_ok(), "empty string is not a metachar");
+    }
+
+    #[test]
+    fn ascii_lowercase_only() {
+        // Unicode characters should NOT be lowercased (to_ascii_lowercase is a no-op for non-ASCII)
+        assert!(validate_host_exec_args(&["git".into(), "--EXEC-PATH=".into()]).is_err());
+        assert!(validate_host_exec_args(&["git".into(), "--İ".into()]).is_ok(), "Turkish İ is non-ASCII");
     }
 }

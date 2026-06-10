@@ -10,17 +10,8 @@ use crate::protocol::HostMessage;
 use crate::socket;
 
 pub fn run() -> Result<(), GuestError> {
-    let container_name = std::env::var("PODBOX_CONTAINER")
-        .or_else(|_| std::env::var("PODMGR_CONTAINER"))
-        .map_err(|_| GuestError::ContainerNameMissing)?;
-
-    let xdg_runtime = std::env::var("XDG_RUNTIME_DIR")
-        .unwrap_or_else(|_| format!("/run/user/{}", nix::unistd::getuid()));
-
-    let host_socket_path = PathBuf::from(&xdg_runtime)
-        .join("podbox")
-        .join(format!("{}.sock", container_name));
-
+    let host_socket_path = socket::host_socket_path()?;
+    let container_name = socket::container_name()?;
     let bin_dir = PathBuf::from("/run/podbox/bin");
 
     // 1. Create /run/podbox/bin/
